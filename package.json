@@ -1,0 +1,28 @@
+{
+  "name": "my-kanban",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --if-present dev",
+    "dev:web": "pnpm --filter @my-kanban/web dev",
+    "dev:api": "pnpm --filter @my-kanban/api dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,yaml,yml,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,yaml,yml,md}\"",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:migrate": "pnpm --filter @my-kanban/api prisma:migrate",
+    "db:generate": "pnpm --filter @my-kanban/api prisma:generate"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  }
+}

@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectMode {
+  kanban
+  scrum
+}
+
+enum IssuePriority {
+  urgent
+  high
+  medium
+  low
+  none
+}
+
+model User {
+  id          String         @id @default(uuid()) @db.Uuid
+  displayName String         @map("display_name") @db.VarChar(120)
+  avatarUrl   String?        @map("avatar_url")
+  identities  AuthIdentity[]
+  workspaces  Workspace[]
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+model AuthIdentity {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  provider        String    @db.VarChar(32)
+  providerSubject String    @map("provider_subject") @db.VarChar(255)
+  email           String    @unique @db.VarChar(320)
+  emailVerified   Boolean   @map("email_verified")
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(6)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+model HttpSession {
+  sid    String   @id @db.VarChar(255)
+  sess   Json
+  expire DateTime @db.Timestamptz(6)
+
+  @@index([expire])
+  @@map("http_sessions")
+}
+
+model Workspace {
+  id              String    @id @default(uuid()) @db.Uuid
+  ownerId         String    @map("owner_id") @db.Uuid
+  name            String    @db.VarChar(120)
+  activeProjectId String?   @map("active_project_id") @db.Uuid
+  version         Int       @default(1)
+  owner           User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  projects        Project[]
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  name        String        @db.VarChar(120)
+  color       String        @default("primary") @db.VarChar(32)
+  mode        ProjectMode   @default(kanban)
+  version     Int           @default(1)
+  archivedAt  DateTime?     @map("archived_at") @db.Timestamptz(6)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     BoardColumn[]
+  issues      Issue[]
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([workspaceId, archivedAt])
+  @@map("projects")
+}
+
+model BoardColumn {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  name       String    @db.VarChar(80)
+  rank       BigInt
+  wipLimit   Int?      @map("wip_limit")
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues     Issue[]
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([projectId, rank])
+  @@index([projectId, archivedAt, rank])
+  @@map("board_columns")
+}
+
+model Issue {
+  id            String        @id @default(uuid()) @db.Uuid
+  projectId     String        @map("project_id") @db.Uuid
+  columnId      String        @map("column_id") @db.Uuid
+  title         String        @db.VarChar(240)
+  description   String?
+  priority      IssuePriority @default(medium)
+  labels        String[]
+  rank          BigInt
+  version       Int           @default(1)
+  dueDate       DateTime?     @map("due_date") @db.Timestamptz(6)
+  isBlocked     Boolean       @default(false) @map("is_blocked")
+  blockedReason String?       @map("blocked_reason")
+  archivedAt    DateTime?     @map("archived_at") @db.Timestamptz(6)
+  completedAt   DateTime?     @map("completed_at") @db.Timestamptz(6)
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column        BoardColumn   @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([columnId, rank])
+  @@index([projectId, archivedAt, columnId, rank])
+  @@index([projectId, dueDate])
+  @@map("issues")
+}

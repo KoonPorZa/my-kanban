@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-my_kanban}
+      POSTGRES_USER: ${POSTGRES_USER:-my_kanban}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-my_kanban_local}
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-my_kanban} -d ${POSTGRES_DB:-my_kanban}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - kanban_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  kanban_postgres_data:
