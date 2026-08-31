@@ -22,6 +22,7 @@ type Props = BoxProps & {
   taskName: string;
   taskStatus: string;
   onArchive: () => void;
+  onMoveToBacklog?: () => void;
   onLikeToggle: () => void;
   onCloseDetails: () => void;
 };
@@ -31,6 +32,7 @@ export function KanbanDetailsToolbar({
   liked,
   taskName,
   onArchive,
+  onMoveToBacklog,
   taskStatus,
   onLikeToggle,
   onCloseDetails,
@@ -124,6 +126,19 @@ export function KanbanDetailsToolbar({
         <Box component="span" sx={{ flexGrow: 1 }} />
 
         <Box sx={{ display: 'flex' }}>
+          {onMoveToBacklog && (
+            <Button
+              size="small"
+              color="inherit"
+              variant="soft"
+              aria-label="Move task to backlog"
+              startIcon={<Iconify icon="solar:inbox-in-bold" />}
+              onClick={onMoveToBacklog}
+            >
+              Backlog
+            </Button>
+          )}
+
           <Tooltip title="Like">
             <IconButton color={liked ? 'default' : 'primary'} onClick={onLikeToggle}>
               <Iconify icon="solar:like-bold" />

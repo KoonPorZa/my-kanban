@@ -32,6 +32,8 @@ export type IKanbanTask = {
   labels: string[];
   id: UniqueIdentifier;
   version: number;
+  sprintId: string | null;
+  storyPoints: number | null;
   description?: string;
   attachments: string[];
   comments: IKanbanComment[];

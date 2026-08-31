@@ -1,8 +1,8 @@
 ---
 title: Personal Kanban PostgreSQL Data Specification
-version: 1.2
+version: 1.3
 date_created: 2026-08-31
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 owner: Product owner
 tags: [data, postgresql, prisma, schema, migration]
 ---
@@ -304,26 +304,26 @@ Column ต้องมี rank ที่ unique ต่อ Project สำหร�
 
 Issue เป็น aggregate root ของรายละเอียดงานและตำแหน่งบน Board
 
-| Column           | Type         | Rules                                        |
-| ---------------- | ------------ | -------------------------------------------- |
-| `id`             | UUID         | Primary key                                  |
-| `project_id`     | UUID         | FK `projects`, cascade delete, indexed       |
-| `sprint_id`      | UUID         | Nullable FK `sprints`, set null on delete    |
-| `column_id`      | UUID         | FK `board_columns`, restrict delete, indexed |
-| `title`          | VARCHAR(200) | Required, trimmed                            |
-| `description`    | TEXT         | Required, default empty                      |
-| `type`           | ENUM         | `task`, `story`, `bug`, `chore`              |
-| `priority`       | ENUM         | `urgent`, `high`, `medium`, `low`, `none`    |
-| `story_points`   | INTEGER      | Nullable, 0 through 100                      |
-| `due_date`       | DATE         | Nullable                                     |
-| `is_blocked`     | BOOLEAN      | Required, default false                      |
-| `blocked_reason` | VARCHAR(500) | Nullable                                     |
-| `rank`           | BIGINT       | Required                                     |
-| `completed_at`   | TIMESTAMPTZ  | Nullable                                     |
-| `version`        | INTEGER      | Required                                     |
-| `archived_at`    | TIMESTAMPTZ  | Nullable                                     |
-| `created_at`     | TIMESTAMPTZ  | Required                                     |
-| `updated_at`     | TIMESTAMPTZ  | Required                                     |
+| Column           | Type         | Rules                                                                            |
+| ---------------- | ------------ | -------------------------------------------------------------------------------- |
+| `id`             | UUID         | Primary key                                                                      |
+| `project_id`     | UUID         | FK `projects`, cascade delete, indexed                                           |
+| `sprint_id`      | UUID         | Nullable composite FK with `project_id`; restrict Sprint delete until unassigned |
+| `column_id`      | UUID         | FK `board_columns`, restrict delete, indexed                                     |
+| `title`          | VARCHAR(200) | Required, trimmed                                                                |
+| `description`    | TEXT         | Required, default empty                                                          |
+| `type`           | ENUM         | `task`, `story`, `bug`, `chore`                                                  |
+| `priority`       | ENUM         | `urgent`, `high`, `medium`, `low`, `none`                                        |
+| `story_points`   | INTEGER      | Nullable, 0 through 100                                                          |
+| `due_date`       | DATE         | Nullable                                                                         |
+| `is_blocked`     | BOOLEAN      | Required, default false                                                          |
+| `blocked_reason` | VARCHAR(500) | Nullable                                                                         |
+| `rank`           | BIGINT       | Required                                                                         |
+| `completed_at`   | TIMESTAMPTZ  | Nullable                                                                         |
+| `version`        | INTEGER      | Required                                                                         |
+| `archived_at`    | TIMESTAMPTZ  | Nullable                                                                         |
+| `created_at`     | TIMESTAMPTZ  | Required                                                                         |
+| `updated_at`     | TIMESTAMPTZ  | Required                                                                         |
 
 #### `checklist_items`
 
@@ -374,21 +374,25 @@ Sprint เก็บ planning snapshot และผลลัพธ์เมื่
 
 Active Sprint uniqueness ต้องบังคับด้วย partial unique index ต่อ Project
 
-| Column             | Type         | Rules                                  |
-| ------------------ | ------------ | -------------------------------------- |
-| `id`               | UUID         | Primary key                            |
-| `project_id`       | UUID         | FK `projects`, cascade delete, indexed |
-| `name`             | VARCHAR(120) | Required                               |
-| `goal`             | VARCHAR(500) | Required, default empty                |
-| `status`           | ENUM         | `planned`, `active`, `completed`       |
-| `start_date`       | DATE         | Required                               |
-| `end_date`         | DATE         | Required, not before start             |
-| `planned_points`   | INTEGER      | Required, snapshot                     |
-| `completed_points` | INTEGER      | Required, default zero                 |
-| `version`          | INTEGER      | Required                               |
-| `completed_at`     | TIMESTAMPTZ  | Nullable                               |
-| `created_at`       | TIMESTAMPTZ  | Required                               |
-| `updated_at`       | TIMESTAMPTZ  | Required                               |
+| Column                   | Type         | Rules                                  |
+| ------------------------ | ------------ | -------------------------------------- |
+| `id`                     | UUID         | Primary key                            |
+| `project_id`             | UUID         | FK `projects`, cascade delete, indexed |
+| `name`                   | VARCHAR(120) | Required                               |
+| `goal`                   | VARCHAR(500) | Required, default empty                |
+| `status`                 | ENUM         | `planned`, `active`, `completed`       |
+| `start_date`             | DATE         | Required                               |
+| `end_date`               | DATE         | Required, not before start             |
+| `planned_points`         | INTEGER      | Required, start snapshot               |
+| `planned_issue_count`    | INTEGER      | Required, start snapshot               |
+| `completed_points`       | INTEGER      | Required, completion snapshot          |
+| `completed_issue_count`  | INTEGER      | Required, completion snapshot          |
+| `incomplete_points`      | INTEGER      | Required, completion snapshot          |
+| `incomplete_issue_count` | INTEGER      | Required, completion snapshot          |
+| `version`                | INTEGER      | Required                               |
+| `completed_at`           | TIMESTAMPTZ  | Nullable                               |
+| `created_at`             | TIMESTAMPTZ  | Required                               |
+| `updated_at`             | TIMESTAMPTZ  | Required                               |
 
 ### 4.7 Required indexes
 

@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.11
+version: 1.12
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -12,8 +12,10 @@ tags: [implementation, status, phase-0, kanban]
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
 August 31, 2026 Foundation, Google authentication, Board persistence,
 Project-scoped Remote MCP Phase 1A, MVP release-readiness และ production deploy
-ผ่าน automated verification ตามรายการด้านล่างแล้ว งาน credential-gated และ recovery
-ที่ยังค้างบันทึกไว้ใน `production-closeout.md`
+ผ่าน automated verification ตามรายการด้านล่างแล้ว Phase 2 Scrum MVP มี implementation
+และ automated verification ใน local workspace แล้ว ส่วน authenticated browser acceptance
+และ production release ยังไม่เกิดขึ้น งาน credential-gated และ recovery ที่ยังค้างบันทึกไว้ใน
+`production-closeout.md`
 
 ## 1. Completed foundation
 
@@ -126,7 +128,29 @@ Authenticated browser smoke ของหน้า MCP access ถูก defer ต
 Codex และ Claude CLI smoke เรียก `get_context` ผ่าน Web `/mcp` สำเร็จ Automated
 protocol, mutation และ HTTP proxy smoke ผ่านแล้ว
 
-## 6. Verification record
+## 6. Phase 2 Scrum MVP implementation
+
+Phase 2 มี vertical slice ที่ใช้งานต่อเนื่องจาก Backlog ถึง Sprint history แล้ว
+
+- Project สลับ Kanban/Scrum ด้วย optimistic version และห้ามกลับ Kanban ขณะมี Active Sprint
+- Sprint REST API รองรับ create, assign/remove task, start, complete และ incomplete
+  destination โดย owner-scoped ทุก operation
+- หน้า `/dashboard/sprints` รองรับ planning, Active Sprint summary, completion และ history
+- Scrum Board แสดงเฉพาะ Active Sprint, มี planning/empty/error state, Add from backlog และ
+  Move to backlog จาก task detail
+- Task detail แก้ Story Point 0–100 ได้และ card แสดง point badge; `null` นับเป็น 0 ใน metrics
+- Start เก็บ planned snapshot ส่วน complete เก็บ completed/incomplete point และ count จาก
+  scope จริง ณ เวลาปิด Sprint
+- Atomic Sprint quick-add ป้องกัน hidden backlog orphan และ transaction advisory lock ป้องกัน
+  Sprint lifecycle ชน mode, membership, task state, clear/archive และ rank allocation
+- Scrum Clear Column กระทบเฉพาะ task ของ Active Sprint; Delete Column ถูกปิดใน Scrum mode
+  เพื่อไม่ให้ task ที่ซ่อนอยู่สูญหาย
+
+Automated gate ผ่านครบและ code review อนุมัติให้ merge เข้า `develop` ได้ แต่ manual checklist
+ใน `spec-ux-scrum-mvp.md` ยังต้องทดสอบด้วย Google session จริงก่อนเปิด release branch และยัง
+ไม่ถือว่า Phase 2 production-ready
+
+## 7. Verification record
 
 Foundation มี evidence ล่าสุดดังนี้
 
@@ -135,12 +159,12 @@ Foundation มี evidence ล่าสุดดังนี้
 | `corepack pnpm railway:validate`  | Passed                               |
 | `corepack pnpm typecheck`         | Passed                               |
 | `corepack pnpm lint`              | Passed                               |
-| `corepack pnpm test`              | Passed; API 23, Web 4, CLI 4 tests   |
+| `corepack pnpm test`              | Passed; API 60, Web 22, CLI 4 tests  |
 | `corepack pnpm build`             | Passed for Web, API, client, and CLI |
 | `corepack pnpm api:generate`      | Passed; deterministic output         |
 | `corepack pnpm format:check`      | Passed                               |
 | `prisma validate`                 | Passed                               |
-| `prisma migrate deploy`           | Passed; 3 migrations, none pending   |
+| Local Prisma migration status     | Passed; 6 migrations, none pending   |
 | `GET /health/live`                | `200 {"status":"ok"}`                |
 | `GET /health/ready`               | `200 {"status":"ready"}`             |
 | Swagger JSON                      | Served from `/api/docs-json`         |
@@ -162,7 +186,7 @@ Foundation มี evidence ล่าสุดดังนี้
 | Railway production region         | All services in Singapore            |
 | Post-region Prisma deploy         | 3 migrations, none pending           |
 
-## 7. Deployment status
+## 8. Deployment status
 
 Railway production มี `web`, `api` และ `Postgres` online โดย Web เหลือ public custom
 domain `kanban.koonporza.com` เพียงรายการเดียว Railway-generated domain
@@ -180,10 +204,13 @@ Railway plan ปัจจุบันไม่รองรับ volume backup/P
 ก่อน Phase 2 เพราะยังไม่มีข้อมูลใช้งานที่ต้องเก็บ การเปิด backup หรือ logical export
 ก่อนมีข้อมูลสำคัญเป็น hardening task ใน Phase 3
 
-## 8. Next steps
+## 9. Next steps
 
-Pre-Phase-2 production gate ผ่านครบแล้ว Product Owner ยืนยัน authenticated Board
-create, edit, drag, archive และ reload persistence เมื่อ September 1, 2026 จึงเริ่ม
-Phase 2: Scrum MVP ได้ Cloudflare `Full` และ public bypass hardening ผ่านแล้ว Product
-Owner เลื่อน MCP mutation, revoke และ project-isolation acceptance ไว้ภายหลัง รายการนี้
-ยังไม่ผ่านและต้องทดสอบก่อนประกาศ MCP production-ready
+1. Merge `feature/scrum-mvp` เข้า `develop` ตาม Gitflow หลัง automated gate และ review ผ่าน
+2. Implement Phase 3 recovery/hardening บน feature branch จาก `develop`
+3. Run authenticated local Scrum checklist: mode switch, Story Point, planning, start,
+   scoped Board, add/remove, complete ทั้งสอง destination, history และ reload persistence
+4. เปิด release branch, deploy migration/API/Web ไป Railway แล้วทำ production smoke ก่อน merge
+   เข้า `main`
+5. MCP mutation, revoke และ Project-isolation acceptance ยัง defer และต้องผ่านก่อนประกาศ
+   MCP production-ready

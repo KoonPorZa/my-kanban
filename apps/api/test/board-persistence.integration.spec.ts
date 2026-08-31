@@ -6,7 +6,11 @@ import { PrismaService } from '../src/database/prisma.service';
 import { IssuesService } from '../src/issues/issues.service';
 import { PrismaIssuesRepository } from '../src/issues/prisma-issues.repository';
 import { TaskPriority } from '../src/issues/dto/issue-mutation.dto';
-import { ResourceNotFoundError, VersionConflictError } from '../src/common/domain/domain-errors';
+import {
+  ResourceNotFoundError,
+  VersionConflictError,
+  DomainValidationError,
+} from '../src/common/domain/domain-errors';
 
 describe('Board persistence integration', () => {
   let prisma: PrismaService;
@@ -108,6 +112,112 @@ describe('Board persistence integration', () => {
     const boardAfterArchive = await boards.get(owner.userId, owner.projectId);
     expect(boardAfterArchive.columns).not.toContainEqual(expect.objectContaining({ id: moved.id }));
   });
+
+  it('clears only Active Sprint tasks and blocks column deletion in Scrum mode', async () => {
+    const owner = await createBoardFixture('scrum-clear');
+    await prisma.project.update({ where: { id: owner.projectId }, data: { mode: 'scrum' } });
+    const [activeSprint, otherSprint] = await Promise.all([
+      createSprint(owner.projectId, 'Active', 'active'),
+      createSprint(owner.projectId, 'Other', 'planned'),
+    ]);
+    const activeTask = await issues.create(owner.userId, owner.projectId, {
+      title: 'Clear active task',
+      columnId: owner.todoColumnId,
+    });
+    const backlogTask = await issues.create(owner.userId, owner.projectId, {
+      title: 'Keep backlog task',
+      columnId: owner.todoColumnId,
+    });
+    const otherSprintTask = await issues.create(owner.userId, owner.projectId, {
+      title: 'Keep other Sprint task',
+      columnId: owner.todoColumnId,
+    });
+    await Promise.all([
+      prisma.issue.update({ where: { id: activeTask.id }, data: { sprintId: activeSprint.id } }),
+      prisma.issue.update({
+        where: { id: otherSprintTask.id },
+        data: { sprintId: otherSprint.id },
+      }),
+    ]);
+
+    const column = (await boards.get(owner.userId, owner.projectId)).columns.find(
+      ({ id }) => id === owner.todoColumnId
+    )!;
+    await expect(boards.clearColumn(owner.userId, column.id, column.version)).rejects.toThrow(
+      'sprintId is required to clear a column in Scrum mode'
+    );
+    const cleared = await boards.clearColumn(
+      owner.userId,
+      column.id,
+      column.version,
+      activeSprint.id
+    );
+    const boardAfterClear = await boards.get(owner.userId, owner.projectId);
+    expect(boardAfterClear.issues.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([backlogTask.id, otherSprintTask.id])
+    );
+    expect(boardAfterClear.issues).not.toContainEqual(
+      expect.objectContaining({ id: activeTask.id })
+    );
+    await expect(boards.archiveColumn(owner.userId, column.id, cleared.version)).rejects.toThrow(
+      'Columns cannot be archived while Scrum mode is enabled'
+    );
+  });
+
+  it('reorders visible Sprint neighbors separated by hidden tasks', async () => {
+    const owner = await createBoardFixture('scrum-reorder');
+    const sprint = await createSprint(owner.projectId, 'Active reorder', 'active');
+    const first = await issues.create(owner.userId, owner.projectId, {
+      title: 'First visible',
+      columnId: owner.todoColumnId,
+    });
+    const hidden = await issues.create(owner.userId, owner.projectId, {
+      title: 'Hidden backlog',
+      columnId: owner.todoColumnId,
+    });
+    const last = await issues.create(owner.userId, owner.projectId, {
+      title: 'Last visible',
+      columnId: owner.todoColumnId,
+    });
+    const moved = await issues.create(owner.userId, owner.projectId, {
+      title: 'Move between visible tasks',
+      columnId: owner.doneColumnId,
+    });
+    await prisma.issue.updateMany({
+      where: { id: { in: [first.id, last.id, moved.id] } },
+      data: { sprintId: sprint.id },
+    });
+
+    const reordered = await issues.move(owner.userId, moved.id, {
+      version: moved.version,
+      targetColumnId: owner.todoColumnId,
+      sprintId: sprint.id,
+      beforeIssueId: last.id,
+      afterIssueId: first.id,
+    });
+    expect(reordered.columnId).toBe(owner.todoColumnId);
+
+    await expect(
+      issues.move(owner.userId, reordered.id, {
+        version: reordered.version,
+        targetColumnId: owner.todoColumnId,
+        sprintId: sprint.id,
+        beforeIssueId: hidden.id,
+      })
+    ).rejects.toBeInstanceOf(DomainValidationError);
+  });
+
+  function createSprint(projectId: string, name: string, status: 'planned' | 'active') {
+    return prisma.sprint.create({
+      data: {
+        projectId,
+        name,
+        status,
+        startDate: new Date('2026-09-01'),
+        endDate: new Date('2026-09-14'),
+      },
+    });
+  }
 
   async function createBoardFixture(label: string) {
     const user = await prisma.user.create({

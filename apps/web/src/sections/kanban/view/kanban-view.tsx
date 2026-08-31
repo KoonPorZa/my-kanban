@@ -8,6 +8,7 @@ import type {
   CollisionDetection,
 } from '@dnd-kit/core';
 
+import { useRouter } from 'next/navigation';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   arrayMove,
@@ -31,13 +32,20 @@ import {
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
+import { paths } from 'src/routes/paths';
+
 import { DashboardContent } from 'src/layouts/dashboard';
 import { moveColumn, useGetBoard, previewTaskMove, persistTaskMove } from 'src/actions/kanban';
 
+import { Label } from 'src/components/label';
+import { toast } from 'src/components/snackbar';
+import { Iconify } from 'src/components/iconify';
 import { EmptyContent } from 'src/components/empty-content';
 
 import { kanbanClasses } from '../classes';
@@ -64,7 +72,8 @@ const cssVars = {
 // ----------------------------------------------------------------------
 
 export function KanbanView() {
-  const { board, boardLoading, boardEmpty } = useGetBoard();
+  const router = useRouter();
+  const { board, boardLoading, boardEmpty, boardError, projectMode, activeSprint } = useGetBoard();
 
   const recentlyMovedToNewContainer = useRef(false);
   const lastOverId = useRef<UniqueIdentifier>(null);
@@ -73,6 +82,15 @@ export function KanbanView() {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
   const columnIds = board.columns.map((column) => column.id);
+  const visibleTasks = Object.values(board.tasks).flat();
+  const currentSprintPoints = visibleTasks.reduce(
+    (total, task) => total + (task.storyPoints ?? 0),
+    0
+  );
+  const activeSprintEmpty =
+    projectMode === 'scrum' && Boolean(activeSprint) && !visibleTasks.length;
+  const hasRenderableBoard =
+    Boolean(board.projectId) && (projectMode !== 'scrum' || Boolean(activeSprint));
 
   const isSortingContainer = activeId != null ? columnIds.includes(activeId) : false;
 
@@ -243,6 +261,7 @@ export function KanbanView() {
           await moveColumn(board.projectId, movedColumn, updateColumns);
         } catch (error) {
           console.error(error);
+          toast.error('Could not move column. The Board was refreshed.');
         }
       }
 
@@ -289,6 +308,7 @@ export function KanbanView() {
           await persistTaskMove(board.projectId, activeTask, overColumn, updateTasks[overColumn]);
         } catch (error) {
           console.error(error);
+          toast.error('Could not move task. The Board was refreshed.');
         }
       }
     }
@@ -346,6 +366,7 @@ export function KanbanView() {
                 <KanbanColumn
                   key={column.id}
                   projectId={board.projectId}
+                  scrumMode={projectMode === 'scrum'}
                   column={column}
                   tasks={board.tasks[column.id]}
                 >
@@ -399,28 +420,127 @@ export function KanbanView() {
           pr: { sm: 3 },
           mb: { xs: 3, md: 5 },
           display: 'flex',
-          alignItems: 'center',
+          gap: 2,
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'stretch', md: 'center' },
           justifyContent: 'space-between',
         }}
       >
-        <Typography variant="h4">{board.projectName || 'Kanban'}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="h4">{board.projectName || 'Kanban'}</Typography>
+            {activeSprint && (
+              <Label color="success" variant="soft">
+                {activeSprint.name}
+              </Label>
+            )}
+          </Box>
+          {activeSprint && (
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={{ xs: 0.25, sm: 1 }}
+              sx={{ mt: 0.75, color: 'text.secondary' }}
+            >
+              <Typography variant="caption">
+                {activeSprint.startDate} — {activeSprint.endDate}
+              </Typography>
+              <Typography variant="caption">
+                {visibleTasks.length} issues · {currentSprintPoints} current points ·{' '}
+                {activeSprint.plannedPoints} planned points
+              </Typography>
+              {activeSprint.goal && (
+                <Typography variant="caption" sx={{ maxWidth: 480 }} noWrap>
+                  Goal: {activeSprint.goal}
+                </Typography>
+              )}
+            </Stack>
+          )}
+        </Box>
 
-        <FormControlLabel
-          label="Fixed column"
-          labelPlacement="start"
-          control={
-            <Switch
-              checked={columnFixed}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                setColumnFixed(event.target.checked);
-              }}
-              slotProps={{ input: { id: 'fixed-column-switch' } }}
-            />
-          }
-        />
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', justifyContent: { xs: 'space-between', md: 'flex-end' } }}
+        >
+          {activeSprint && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Iconify icon="solar:add-circle-bold" />}
+              onClick={() => router.push(paths.dashboard.sprints)}
+            >
+              Add from backlog
+            </Button>
+          )}
+          <FormControlLabel
+            label="Fixed column"
+            labelPlacement="start"
+            control={
+              <Switch
+                checked={columnFixed}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                  setColumnFixed(event.target.checked);
+                }}
+                slotProps={{ input: { id: 'fixed-column-switch' } }}
+              />
+            }
+          />
+        </Stack>
       </Box>
 
-      {boardLoading ? renderLoading() : <>{boardEmpty ? renderEmpty() : renderList()}</>}
+      {boardError && (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          }
+          sx={{ mr: { sm: 3 }, mb: 2 }}
+        >
+          Could not refresh the Board. Last loaded data is shown when available.
+        </Alert>
+      )}
+
+      {boardError && !hasRenderableBoard ? null : boardLoading ? (
+        renderLoading()
+      ) : projectMode === 'scrum' && !activeSprint ? (
+        <EmptyContent
+          filled
+          title="No active Sprint"
+          description="Plan a Sprint and add at least one issue to start."
+          sx={{ py: 10, maxHeight: { md: 480 } }}
+          action={
+            <Button
+              variant="contained"
+              startIcon={<Iconify icon="solar:calendar-date-bold" />}
+              onClick={() => router.push(paths.dashboard.sprints)}
+              sx={{ mt: 3 }}
+            >
+              Plan Sprint
+            </Button>
+          }
+        />
+      ) : activeSprintEmpty ? (
+        <EmptyContent
+          filled
+          title="Active Sprint is empty"
+          description="Add work from the backlog to continue this Sprint."
+          sx={{ py: 10, maxHeight: { md: 480 } }}
+          action={
+            <Button
+              variant="contained"
+              startIcon={<Iconify icon="solar:add-circle-bold" />}
+              onClick={() => router.push(paths.dashboard.sprints)}
+              sx={{ mt: 3 }}
+            >
+              Add from backlog
+            </Button>
+          }
+        />
+      ) : (
+        <>{boardEmpty ? renderEmpty() : renderList()}</>
+      )}
     </DashboardContent>
   );
 }

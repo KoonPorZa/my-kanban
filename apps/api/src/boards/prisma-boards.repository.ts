@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
+import { lockProjectTransaction } from '../database/project-transaction-lock';
 import {
   ResourceNotFoundError,
   VersionConflictError,
@@ -23,6 +24,7 @@ const columnSelect = {
 const boardIssueSelect = {
   id: true,
   projectId: true,
+  sprintId: true,
   columnId: true,
   title: true,
   description: true,
@@ -47,15 +49,15 @@ export class PrismaBoardsRepository extends BoardsRepository {
     super();
   }
 
-  async get(ownerId: string, projectId: string) {
-    return this.getScoped(projectId, ownerId);
+  async get(ownerId: string, projectId: string, sprintId?: string) {
+    return this.getScoped(projectId, ownerId, sprintId);
   }
 
   async getForProject(projectId: string) {
     return this.getScoped(projectId);
   }
 
-  private async getScoped(projectId: string, ownerId?: string) {
+  private async getScoped(projectId: string, ownerId?: string, sprintId?: string) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, archivedAt: null, ...(ownerId && { workspace: { ownerId } }) },
       select: {
@@ -69,7 +71,7 @@ export class PrismaBoardsRepository extends BoardsRepository {
           select: {
             ...columnSelect,
             issues: {
-              where: { archivedAt: null },
+              where: { archivedAt: null, ...(sprintId && { sprintId }) },
               orderBy: { rank: 'asc' },
               select: boardIssueSelect,
             },
@@ -78,6 +80,13 @@ export class PrismaBoardsRepository extends BoardsRepository {
       },
     });
     if (!project) throw new ResourceNotFoundError('Project');
+    if (sprintId) {
+      const activeSprint = await this.prisma.sprint.findFirst({
+        where: { id: sprintId, projectId: project.id, status: 'active' },
+        select: { id: true },
+      });
+      if (!activeSprint) throw new ResourceNotFoundError('Active Sprint');
+    }
 
     return {
       project: {
@@ -169,12 +178,30 @@ export class PrismaBoardsRepository extends BoardsRepository {
     });
   }
 
-  async clearColumn(ownerId: string, columnId: string, version: number) {
+  async clearColumn(ownerId: string, columnId: string, version: number, sprintId?: string) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockColumnProject(transaction, ownerId, columnId);
       const column = await this.findScopedColumn(transaction, ownerId, columnId, version);
+      const project = await transaction.project.findUniqueOrThrow({
+        where: { id: column.projectId },
+        select: { mode: true },
+      });
+      if (project.mode === 'scrum' && !sprintId) {
+        throw new DomainValidationError('sprintId is required to clear a column in Scrum mode');
+      }
+      if (project.mode === 'kanban' && sprintId) {
+        throw new DomainValidationError('sprintId is only supported in Scrum mode');
+      }
+      if (sprintId) {
+        const sprint = await transaction.sprint.findFirst({
+          where: { id: sprintId, projectId: column.projectId, status: 'active' },
+          select: { id: true },
+        });
+        if (!sprint) throw new ResourceNotFoundError('Active Sprint');
+      }
       const archivedAt = new Date();
       await transaction.issue.updateMany({
-        where: { columnId: column.id, archivedAt: null },
+        where: { columnId: column.id, archivedAt: null, ...(sprintId && { sprintId }) },
         data: { archivedAt, version: { increment: 1 } },
       });
       const result = await transaction.boardColumn.updateMany({
@@ -191,7 +218,15 @@ export class PrismaBoardsRepository extends BoardsRepository {
 
   async archiveColumn(ownerId: string, columnId: string, version: number) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockColumnProject(transaction, ownerId, columnId);
       const column = await this.findScopedColumn(transaction, ownerId, columnId, version);
+      const project = await transaction.project.findUniqueOrThrow({
+        where: { id: column.projectId },
+        select: { mode: true },
+      });
+      if (project.mode === 'scrum') {
+        throw new DomainValidationError('Columns cannot be archived while Scrum mode is enabled');
+      }
       const archivedAt = new Date();
       await transaction.issue.updateMany({
         where: { columnId: column.id, archivedAt: null },
@@ -207,6 +242,19 @@ export class PrismaBoardsRepository extends BoardsRepository {
         select: columnSelect,
       });
     });
+  }
+
+  private async lockColumnProject(
+    transaction: Prisma.TransactionClient,
+    ownerId: string,
+    columnId: string
+  ) {
+    const column = await transaction.boardColumn.findFirst({
+      where: { id: columnId, project: { archivedAt: null, workspace: { ownerId } } },
+      select: { projectId: true },
+    });
+    if (!column) throw new ResourceNotFoundError('Column');
+    await lockProjectTransaction(transaction, column.projectId);
   }
 
   private async findScopedColumn(

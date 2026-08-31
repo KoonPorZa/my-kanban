@@ -126,6 +126,14 @@ export class MoveIssueDto {
   @IsUUID()
   targetColumnId!: string;
 
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Visible Sprint scope used when ordering tasks on the Scrum Board',
+  })
+  @IsOptional()
+  @IsUUID()
+  sprintId?: string;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
+import { lockProjectTransaction } from '../database/project-transaction-lock';
 import {
   ResourceNotFoundError,
   VersionConflictError,
@@ -15,6 +16,7 @@ import type { MoveIssueDto, CreateIssueDto, UpdateIssueDto } from './dto/issue-m
 const issueSelect = {
   id: true,
   projectId: true,
+  sprintId: true,
   columnId: true,
   title: true,
   description: true,
@@ -40,13 +42,15 @@ export class PrismaIssuesRepository extends IssuesRepository {
   }
 
   async create(ownerId: string, projectId: string, input: CreateIssueDto) {
-    return this.prisma.$transaction((transaction) =>
-      this.createWithTransaction(transaction, ownerId, projectId, input)
-    );
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedProject(transaction, ownerId, projectId);
+      return this.createWithTransaction(transaction, ownerId, projectId, input);
+    });
   }
 
   async createMany(ownerId: string, projectId: string, inputs: CreateIssueDto[]) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedProject(transaction, ownerId, projectId);
       const created = [];
       for (const input of inputs) {
         created.push(await this.createWithTransaction(transaction, ownerId, projectId, input));
@@ -111,6 +115,7 @@ export class PrismaIssuesRepository extends IssuesRepository {
     afterIssueId?: string
   ) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockIssueProject(transaction, projectId, issueId);
       const issue = await transaction.issue.findFirst({
         where: { id: issueId, projectId, archivedAt: { not: null }, project: { archivedAt: null } },
       });
@@ -201,6 +206,7 @@ export class PrismaIssuesRepository extends IssuesRepository {
 
   async update(ownerId: string, issueId: string, input: UpdateIssueDto) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedIssueProject(transaction, ownerId, issueId);
       await this.findScopedIssue(transaction, ownerId, issueId, input.version);
       const { version, ...changes } = input;
       const result = await transaction.issue.updateMany({
@@ -232,7 +238,18 @@ export class PrismaIssuesRepository extends IssuesRepository {
 
   async move(ownerId: string, issueId: string, input: MoveIssueDto) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedIssueProject(transaction, ownerId, issueId);
       const issue = await this.findScopedIssue(transaction, ownerId, issueId, input.version);
+      if (input.sprintId && issue.sprintId !== input.sprintId) {
+        throw new DomainValidationError('Task is not in the requested Sprint scope');
+      }
+      if (input.sprintId) {
+        const sprint = await transaction.sprint.findFirst({
+          where: { id: input.sprintId, projectId: issue.projectId, status: 'active' },
+          select: { id: true },
+        });
+        if (!sprint) throw new ResourceNotFoundError('Active Sprint');
+      }
       const targetColumn = await transaction.boardColumn.findFirst({
         where: {
           id: input.targetColumnId,
@@ -249,7 +266,8 @@ export class PrismaIssuesRepository extends IssuesRepository {
         targetColumn.id,
         issue.id,
         input.beforeIssueId,
-        input.afterIssueId
+        input.afterIssueId,
+        input.sprintId
       );
       const result = await transaction.issue.updateMany({
         where: { id: issue.id, version: input.version, archivedAt: null },
@@ -270,6 +288,7 @@ export class PrismaIssuesRepository extends IssuesRepository {
 
   async archive(ownerId: string, issueId: string, version: number) {
     return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedIssueProject(transaction, ownerId, issueId);
       await this.findScopedIssue(transaction, ownerId, issueId, version);
       const result = await transaction.issue.updateMany({
         where: { id: issueId, version, archivedAt: null },
@@ -281,6 +300,45 @@ export class PrismaIssuesRepository extends IssuesRepository {
         await transaction.issue.findUniqueOrThrow({ where: { id: issueId }, select: issueSelect })
       );
     });
+  }
+
+  private async lockOwnedIssueProject(
+    transaction: Prisma.TransactionClient,
+    ownerId: string,
+    issueId: string
+  ) {
+    const issue = await transaction.issue.findFirst({
+      where: { id: issueId, project: { archivedAt: null, workspace: { ownerId } } },
+      select: { projectId: true },
+    });
+    if (!issue) throw new ResourceNotFoundError('Task');
+    await lockProjectTransaction(transaction, issue.projectId);
+  }
+
+  private async lockOwnedProject(
+    transaction: Prisma.TransactionClient,
+    ownerId: string,
+    projectId: string
+  ) {
+    const project = await transaction.project.findFirst({
+      where: { id: projectId, archivedAt: null, workspace: { ownerId } },
+      select: { id: true },
+    });
+    if (!project) throw new ResourceNotFoundError('Project');
+    await lockProjectTransaction(transaction, project.id);
+  }
+
+  private async lockIssueProject(
+    transaction: Prisma.TransactionClient,
+    projectId: string,
+    issueId: string
+  ) {
+    const issue = await transaction.issue.findFirst({
+      where: { id: issueId, projectId, project: { archivedAt: null } },
+      select: { projectId: true },
+    });
+    if (!issue) throw new ResourceNotFoundError('Task');
+    await lockProjectTransaction(transaction, issue.projectId);
   }
 
   private async findScopedIssue(
@@ -306,7 +364,8 @@ export class PrismaIssuesRepository extends IssuesRepository {
     columnId: string,
     excludeIssueId?: string,
     beforeIssueId?: string,
-    afterIssueId?: string
+    afterIssueId?: string,
+    sprintId?: string
   ) {
     const siblings = await transaction.issue.findMany({
       where: {
@@ -317,6 +376,28 @@ export class PrismaIssuesRepository extends IssuesRepository {
       select: { id: true, rank: true },
       orderBy: { rank: 'asc' },
     });
+    if (sprintId) {
+      const scopedIds = new Set(
+        await transaction.issue
+          .findMany({
+            where: { columnId, archivedAt: null, sprintId },
+            select: { id: true },
+          })
+          .then((issues) => issues.map(({ id }) => id))
+      );
+      if (beforeIssueId && !scopedIds.has(beforeIssueId)) {
+        throw new DomainValidationError('beforeIssueId is not in the requested Sprint scope');
+      }
+      if (afterIssueId && !scopedIds.has(afterIssueId)) {
+        throw new DomainValidationError('afterIssueId is not in the requested Sprint scope');
+      }
+      if (beforeIssueId && afterIssueId) {
+        const sorted = [...siblings].sort((left, right) => (left.rank < right.rank ? -1 : 1));
+        const beforeIndex = sorted.findIndex(({ id }) => id === beforeIssueId);
+        const afterIndex = sorted.findIndex(({ id }) => id === afterIssueId);
+        if (afterIndex + 1 !== beforeIndex) afterIssueId = undefined;
+      }
+    }
     let rank = rankForPosition(siblings, beforeIssueId, afterIssueId);
     if (rank !== null) return rank;
 

@@ -25,6 +25,27 @@ import { KanbanInputName } from '../components/kanban-input-name';
 import { KanbanDetailsPriority } from './kanban-details-priority';
 
 const STARTER_CHECKLIST = ['Clarify outcome', 'Do the work', 'Verify the result'];
+const STORY_POINTS_ERROR = 'Enter a whole number from 0 to 100.';
+
+export function parseStoryPoints(value: string) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return { error: null, value: null };
+  }
+
+  if (!/^\d+$/.test(normalizedValue)) {
+    return { error: STORY_POINTS_ERROR, value: null };
+  }
+
+  const storyPoints = Number(normalizedValue);
+
+  if (!Number.isSafeInteger(storyPoints) || storyPoints > 100) {
+    return { error: STORY_POINTS_ERROR, value: null };
+  }
+
+  return { error: null, value: storyPoints };
+}
 
 const BlockLabel = styled('span')(({ theme }) => ({
   ...theme.typography.caption,
@@ -39,16 +60,26 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onArchiveTask: () => void;
+  onMoveToBacklog?: () => void;
   onUpdateTask: (updateTask: IKanbanTask) => void;
 };
 
-export function KanbanDetails({ task, open, onUpdateTask, onArchiveTask, onClose }: Props) {
+export function KanbanDetails({
+  task,
+  open,
+  onUpdateTask,
+  onArchiveTask,
+  onMoveToBacklog,
+  onClose,
+}: Props) {
   const tabs = useTabs('overview');
   const liked = useBoolean();
 
   const [taskName, setTaskName] = useState(task.name);
   const [priority, setPriority] = useState(task.priority);
   const [description, setDescription] = useState(task.description ?? '');
+  const [storyPoints, setStoryPoints] = useState(task.storyPoints?.toString() ?? '');
+  const [storyPointsError, setStoryPointsError] = useState<string | null>(null);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
 
   const saveTask = useCallback(
@@ -73,6 +104,15 @@ export function KanbanDetails({ task, open, onUpdateTask, onArchiveTask, onClose
     [saveTask]
   );
 
+  const handleStoryPointsBlur = useCallback(() => {
+    const parsedStoryPoints = parseStoryPoints(storyPoints);
+    setStoryPointsError(parsedStoryPoints.error);
+
+    if (!parsedStoryPoints.error) {
+      saveTask({ storyPoints: parsedStoryPoints.value });
+    }
+  }, [saveTask, storyPoints]);
+
   const toggleChecklistItem = (item: string) => {
     setCompletedItems((current) =>
       current.includes(item) ? current.filter((value) => value !== item) : [...current, item]
@@ -94,6 +134,7 @@ export function KanbanDetails({ task, open, onUpdateTask, onArchiveTask, onClose
         taskStatus={task.status}
         liked={liked.value}
         onArchive={onArchiveTask}
+        onMoveToBacklog={onMoveToBacklog}
         onLikeToggle={liked.onToggle}
         onCloseDetails={onClose}
       />
@@ -122,6 +163,36 @@ export function KanbanDetails({ task, open, onUpdateTask, onArchiveTask, onClose
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <BlockLabel>Priority</BlockLabel>
               <KanbanDetailsPriority priority={priority} onChangePriority={handlePriorityChange} />
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+              <BlockLabel sx={{ pt: 1.25 }}>Story points</BlockLabel>
+              <TextField
+                id={`${task.id}-story-points`}
+                type="number"
+                size="small"
+                value={storyPoints}
+                error={Boolean(storyPointsError)}
+                helperText={storyPointsError ?? 'Empty counts as 0 points.'}
+                onChange={(event) => {
+                  setStoryPoints(event.target.value);
+                  if (storyPointsError) setStoryPointsError(null);
+                }}
+                onBlur={handleStoryPointsBlur}
+                slotProps={{
+                  htmlInput: {
+                    min: 0,
+                    max: 100,
+                    step: 1,
+                    inputMode: 'numeric',
+                    'aria-label': 'Story points',
+                  },
+                }}
+                sx={{
+                  width: 180,
+                  '& .MuiInputBase-root': { minHeight: 44 },
+                }}
+              />
             </Box>
 
             <Box sx={{ display: 'flex' }}>

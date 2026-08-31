@@ -5,20 +5,23 @@
  * Private API for the personal Kanban and Scrum board
  * OpenAPI spec version: 1.0
  */
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ProjectListResponseDto } from '.././model';
+import type { ProjectListResponseDto, ProjectSummaryDto, UpdateProjectModeDto } from '.././model';
 
 import { apiClient } from '../../http-client';
 import type { ErrorType } from '../../http-client';
@@ -133,3 +136,87 @@ export function useListProjects<
 
   return query;
 }
+
+/**
+ * @summary Change the project workflow mode
+ */
+export const updateProject = (
+  projectId: string,
+  updateProjectModeDto: UpdateProjectModeDto,
+  options?: SecondParameter<typeof apiClient>
+) => {
+  return apiClient<ProjectSummaryDto>(
+    {
+      url: `/api/v1/projects/${projectId}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      data: updateProjectModeDto,
+    },
+    options
+  );
+};
+
+export const getUpdateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProject>>,
+    TError,
+    { projectId: string; data: UpdateProjectModeDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProject>>,
+  TError,
+  { projectId: string; data: UpdateProjectModeDto },
+  TContext
+> => {
+  const mutationKey = ['updateProject'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProject>>,
+    { projectId: string; data: UpdateProjectModeDto }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return updateProject(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateProject>>>;
+export type UpdateProjectMutationBody = UpdateProjectModeDto;
+export type UpdateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Change the project workflow mode
+ */
+export const useUpdateProject = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateProject>>,
+      TError,
+      { projectId: string; data: UpdateProjectModeDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateProject>>,
+  TError,
+  { projectId: string; data: UpdateProjectModeDto },
+  TContext
+> => {
+  const mutationOptions = getUpdateProjectMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
