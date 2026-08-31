@@ -155,7 +155,9 @@ Use these documents as the source of truth for product and technical decisions.
 The production topology is Railway `web`, `api`, and `Postgres` services, with
 `kanban.koonporza.com` on the Web service through Cloudflare. The desired state
 is defined in [the Railway IaC guide](./.railway/README.md). Only Web has a public
-domain; API and PostgreSQL remain private Railway services.
+domain; API and PostgreSQL remain private Railway services. The
+Railway-generated Web domain is removed, so production traffic enters through
+the Cloudflare-backed custom domain.
 
 The Remote MCP endpoint uses the same public Web domain at
 `https://kanban.koonporza.com/mcp`; the NestJS API and PostgreSQL remain private
