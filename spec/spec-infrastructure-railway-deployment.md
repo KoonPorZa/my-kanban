@@ -205,6 +205,7 @@ Variable ต้องกำหนดเฉพาะ service ที่จำเ�
 | Variable                | Web      | API      | Source                                                     |
 | ----------------------- | -------- | -------- | ---------------------------------------------------------- |
 | `NODE_ENV`              | Required | Required | Literal `production`                                       |
+| `PORT`                  | No       | Required | Literal `3001`                                             |
 | `APP_ORIGIN`            | No       | Required | `https://kanban.koonporza.com`                             |
 | `API_INTERNAL_URL`      | Required | No       | API private reference                                      |
 | `NEXT_PUBLIC_AUTH_SKIP` | Required | No       | Literal `false`                                            |
@@ -424,15 +425,10 @@ Operation ต้องเตรียมรับกรณีต่อไปน�
 
 ## 12. Next steps
 
-เอกสารนี้ยังไม่ provision resource จริง Local foundation, Google authentication,
-Board persistence, Remote MCP, production logging, CI, healthchecks, migrations และ
-Railway IaC พร้อมแล้ว Manual local MCP UI test ถูกเลื่อนไปตามคำสั่งผู้ใช้และไม่ block
-release-readiness phase
+Production resources, custom domain, Google login, private network, healthchecks,
+migrations และ deployment จาก `main` พร้อมใช้งานแล้ว หลักฐานและงานที่ต้องปิดก่อน
+Phase 2 อยู่ใน [production closeout record](./production-closeout.md)
 
-1. สร้างหรือ link Railway Project และ `production` environment
-2. รัน `railway config plan`, ตรวจ destructive diff และ apply เมื่อผู้ใช้อนุมัติ plan
-3. ตั้ง sealed Google/session variables ก่อนเชื่อม source ของ `api` และ `web` กับ
-   branch `main`
-4. Deploy API ก่อน Web และ poll ทั้งสอง service จนเป็น terminal success
-5. ใส่ CNAME/TXT ที่ Railway คืนมาจริงใน Cloudflare
-6. ตรวจ HTTPS, login, Board, API/MCP proxy, private networking, logs และ backup
+Postgres volume ปัจจุบันอยู่ `sfo` ต่างจาก Singapore desired state ห้าม apply region
+change จนกว่าจะมี manual recovery point ที่ยืนยันได้และ restore rehearsal ผ่าน เพราะ
+การย้ายมี downtime และความเสี่ยงต่อข้อมูลถ้า volume ไม่ถูกย้ายอย่างถูกต้อง
