@@ -20,6 +20,19 @@ enum IssuePriority {
   none
 }
 
+enum BoardColumnCategory {
+  todo
+  in_progress
+  done
+}
+
+enum IssueType {
+  task
+  story
+  bug
+  chore
+}
+
 model User {
   id          String         @id @default(uuid()) @db.Uuid
   displayName String         @map("display_name") @db.VarChar(120)
@@ -92,16 +105,18 @@ model Project {
 }
 
 model BoardColumn {
-  id         String    @id @default(uuid()) @db.Uuid
-  projectId  String    @map("project_id") @db.Uuid
-  name       String    @db.VarChar(80)
+  id         String              @id @default(uuid()) @db.Uuid
+  projectId  String              @map("project_id") @db.Uuid
+  name       String              @db.VarChar(80)
+  category   BoardColumnCategory @default(todo)
   rank       BigInt
-  wipLimit   Int?      @map("wip_limit")
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  wipLimit   Int?                @map("wip_limit")
+  version    Int                 @default(1)
+  archivedAt DateTime?           @map("archived_at") @db.Timestamptz(6)
+  project    Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues     Issue[]
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([projectId, rank])
   @@index([projectId, archivedAt, rank])
@@ -112,10 +127,12 @@ model Issue {
   id            String        @id @default(uuid()) @db.Uuid
   projectId     String        @map("project_id") @db.Uuid
   columnId      String        @map("column_id") @db.Uuid
-  title         String        @db.VarChar(240)
-  description   String?
+  title         String        @db.VarChar(200)
+  description   String        @default("")
+  type          IssueType     @default(task)
   priority      IssuePriority @default(medium)
   labels        String[]
+  storyPoints   Int?          @map("story_points")
   rank          BigInt
   version       Int           @default(1)
   dueDate       DateTime?     @map("due_date") @db.Timestamptz(6)

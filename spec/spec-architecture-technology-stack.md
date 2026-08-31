@@ -493,13 +493,12 @@ Implementation ต้องรองรับกรณีต่อไปนี�
 
 ## 12. Next steps
 
-Foundation repository, Kanban baseline, NestJS API และ local PostgreSQL พร้อมแล้ว
-ขั้นตอนถัดไปคือทำ Board persistence ให้เป็น application service กลาง แล้วเพิ่ม MCP
-adapter ที่ reuse service เดียวกัน
+Foundation repository, Kanban persistence, generated client และ local PostgreSQL
+พร้อมแล้ว ขั้นตอนถัดไปคือเพิ่ม MCP adapter ที่ reuse application services เดียวกับ REST
 
-1. เพิ่ม Project, Board และ Issue modules พร้อม DTO และ authorization scope
-2. สร้าง OpenAPI artifact กับ Orval client
-3. เปลี่ยน local Kanban adapter เป็น API persistence พร้อม optimistic rollback
-4. เพิ่ม MCP token management, `McpModule` และ audit log
-5. เพิ่ม `apps/cli` สำหรับ macOS Keychain, Codex และ Claude Code
+1. เพิ่ม MCP token, idempotency และ audit schema
+2. เพิ่ม `McpModule` พร้อม Streamable HTTP transport
+3. เพิ่ม Project-token UI และ Web `/mcp` proxy
+4. เพิ่ม `apps/cli` สำหรับ macOS Keychain, Codex และ Claude Code
+5. เพิ่ม MCP integration/security tests
 6. Deploy และตรวจ Railway หลังผู้ใช้สั่ง deploy โดยตรง

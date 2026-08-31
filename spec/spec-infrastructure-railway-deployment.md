@@ -403,13 +403,12 @@ Operation ต้องเตรียมรับกรณีต่อไปน�
 ## 12. Next steps
 
 เอกสารนี้ยังไม่ provision resource จริง Local foundation, Google authentication,
-production build, PostgreSQL healthcheck และ migration แรกผ่านแล้ว ขั้นตอน Railway
-เริ่มเมื่อผู้ใช้สั่ง deploy โดยตรง
+Board persistence, production build, PostgreSQL healthcheck และ migrations ผ่านแล้ว
+ขั้นตอน Railway เริ่มเมื่อผู้ใช้สั่ง deploy โดยตรง
 
-1. ทำ Board application services และ API persistence ให้ผ่าน local integration tests
-2. ทำ MCP token management, `/mcp` proxy และ helper CLI ให้ผ่าน local tests
-3. สร้าง Railway Project และ services `web`, `api`, `Postgres`
-4. ตั้ง reference variables, pre-deploy command และ healthchecks
-5. Deploy และรอ Web กับ API เป็น `SUCCESS`
-6. เพิ่ม `kanban.koonporza.com` แล้วใส่ CNAME/TXT ใน Cloudflare
-7. ตรวจ HTTPS, login, API/MCP proxy, backup และ restore path
+1. ทำ MCP token management, `/mcp` proxy และ helper CLI ให้ผ่าน local tests
+2. สร้าง Railway Project และ services `web`, `api`, `Postgres`
+3. ตั้ง reference variables, pre-deploy command และ healthchecks
+4. Deploy และรอ Web กับ API เป็น `SUCCESS`
+5. เพิ่ม `kanban.koonporza.com` แล้วใส่ CNAME/TXT ใน Cloudflare
+6. ตรวจ HTTPS, login, API/MCP proxy, backup และ restore path

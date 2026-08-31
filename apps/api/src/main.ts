@@ -6,11 +6,12 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import type { Express } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
+import { createOpenApiDocument } from './openapi/openapi-document';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -74,12 +75,7 @@ async function bootstrap() {
   );
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('My Kanban API')
-    .setDescription('Private API for the personal Kanban and Scrum board')
-    .setVersion('1.0')
-    .build();
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+  SwaggerModule.setup('api/docs', app, createOpenApiDocument(app));
 
   const port = config.getOrThrow<number>('PORT');
   await app.listen(port, '0.0.0.0');
