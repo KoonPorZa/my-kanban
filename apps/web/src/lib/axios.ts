@@ -2,11 +2,10 @@ import type { AxiosRequestConfig } from 'axios';
 
 import axios from 'axios';
 
-import { CONFIG } from 'src/global-config';
-
 // ----------------------------------------------------------------------
 
-const axiosInstance = axios.create({ baseURL: CONFIG.serverUrl, withCredentials: true });
+// Browser requests stay same-origin so cookies work and Next.js can proxy API calls to NestJS.
+const axiosInstance = axios.create({ withCredentials: true });
 
 axiosInstance.interceptors.response.use(
   (response) => response,
