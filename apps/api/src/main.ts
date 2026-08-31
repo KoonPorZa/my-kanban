@@ -7,7 +7,7 @@ import connectPgSimple from 'connect-pg-simple';
 import type { Express } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
+import { ConsoleLogger, ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
@@ -21,6 +21,17 @@ async function bootstrap() {
   const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
   const sessionTtlSeconds = config.getOrThrow<number>('SESSION_TTL_SECONDS');
   const PgSessionStore = connectPgSimple(session);
+
+  app.useLogger(
+    new ConsoleLogger({
+      json: isProduction,
+      colors: !isProduction,
+      compact: isProduction,
+      logLevels: isProduction
+        ? ['log', 'warn', 'error']
+        : ['log', 'warn', 'error', 'debug', 'verbose'],
+    })
+  );
 
   if (isProduction) {
     const expressApp = app.getHttpAdapter().getInstance() as Express;
