@@ -1,6 +1,6 @@
 ---
 title: Production Closeout Record
-version: 1.0
+version: 1.1
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -17,20 +17,23 @@ tags: [production, railway, mcp, recovery, phase-2-gate]
 
 Automated checks รันกับ production เมื่อ August 31, 2026 และได้ผลดังนี้
 
-| Check             | Evidence                                                     | Result  |
-| ----------------- | ------------------------------------------------------------ | ------- |
-| Service health    | Web, API และ Postgres มี replica `1/1`                       | Passed  |
-| Public HTTPS      | `GET https://kanban.koonporza.com/`                          | `200`   |
-| Web liveness      | `GET /health/live`                                           | `200`   |
-| Auth boundary     | `GET /api/v1/me` และ `/projects` ไม่มี session               | `401`   |
-| OAuth redirect    | Google callback ใช้ production HTTPS URL                     | Passed  |
-| Cookie baseline   | Session cookie เป็น HttpOnly, Secure, SameSite=Lax           | Passed  |
-| MCP auth boundary | Missing และ invalid bearer token ที่ `POST /mcp`             | `401`   |
-| Network exposure  | API/Postgres ไม่มี domain หรือ TCP proxy                     | Passed  |
-| Custom domain     | Railway verified และ certificate valid                       | Passed  |
-| Request logging   | JSON มี request ID, method, path, status, duration           | Passed  |
-| Secret log scan   | ไม่พบ synthetic token, Authorization หรือ MCP session header | Passed  |
-| Config drift      | API มี live `PORT`; IaC fix เป็น `3001`                      | Patched |
+| Check              | Evidence                                                     | Result  |
+| ------------------ | ------------------------------------------------------------ | ------- |
+| Service health     | Web, API และ Postgres มี replica `1/1`                       | Passed  |
+| Public HTTPS       | `GET https://kanban.koonporza.com/`                          | `200`   |
+| Web liveness       | `GET /health/live`                                           | `200`   |
+| Auth boundary      | `GET /api/v1/me` และ `/projects` ไม่มี session               | `401`   |
+| OAuth redirect     | Google callback ใช้ production HTTPS URL                     | Passed  |
+| Cookie baseline    | Session cookie เป็น HttpOnly, Secure, SameSite=Lax           | Passed  |
+| MCP auth boundary  | Missing และ invalid bearer token ที่ `POST /mcp`             | `401`   |
+| Network exposure   | API/Postgres ไม่มี domain หรือ TCP proxy                     | Passed  |
+| Custom domain      | Railway verified และ certificate valid                       | Passed  |
+| Request logging    | JSON มี request ID, method, path, status, duration           | Passed  |
+| Secret log scan    | ไม่พบ synthetic token, Authorization หรือ MCP session header | Passed  |
+| Config drift       | API มี live `PORT`; IaC fix เป็น `3001`                      | Passed  |
+| Region placement   | Web, API และ Postgres อยู่ Singapore                         | Passed  |
+| Post-region deploy | Postgres, API และ Web deployment ใหม่                        | Success |
+| Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง            | Passed  |
 
 ## 2. Required authenticated acceptance
 
@@ -45,31 +48,32 @@ session forging หรือการอ่านข้อความลับ�
 - [ ] Revoke token แล้ว MCP request ถัดไปตอบ `401`
 - [ ] Token ของ Project หนึ่งอ่านหรือแก้ Task ของ Project อื่นไม่ได้
 
-## 3. Backup and restore gate
+## 3. Backup decision
 
-Railway volume backup เป็น recovery layer ก่อนย้าย region หรือเริ่ม Phase 2 ข้อมูล
-production ต้องไม่ถูก overwrite ระหว่าง rehearsal
+Railway plan ปัจจุบันแสดงว่า Backups และ PITR ใช้ได้เฉพาะ Pro plan Product Owner
+ยืนยันให้ข้าม backup ก่อน Phase 2 เพราะระบบยังไม่มีข้อมูลใช้งานที่ต้องเก็บ และยอมรับ
+ความเสี่ยงของ region migration เมื่อ August 31, 2026
 
-- [ ] `railway postgres pitr schedule list` แสดง Daily, Weekly และ Monthly
-- [ ] มี manual recovery point ชื่อหรือ record ว่า `pre-phase-2-closeout`
-- [ ] Restore production snapshot หรือ logical dump เข้า isolated local/test database
-- [ ] ตรวจ migration version และ row counts ของ Owner, Project, Column, Issue และ MCP
-      metadata โดย raw MCP token ต้องไม่อยู่ในข้อมูล
-- [ ] บันทึก recovery point, ระยะเวลา restore และ verification result ในเอกสารนี้
+- [x] ตรวจ Railway Backups tab และยืนยันว่า plan ปัจจุบันไม่รองรับ backup/PITR
+- [x] Product Owner ยอมรับการข้าม backup และความเสี่ยงต่อข้อมูลเริ่มต้น
+- [x] Post-region migration ตรวจพบ Prisma migrations ครบและไม่มีรายการค้าง
+- [ ] ก่อนมีข้อมูลสำคัญ ให้ upgrade plan หรือเพิ่ม logical export/restore rehearsal ใน
+      Phase 3
 
-Railway OAuth ปัจจุบันอ่าน schedule ได้แต่แก้ไม่ได้และค่าที่อ่านยังเป็น empty array
-ดังนั้นผลจาก staged operator call ยังไม่ถือเป็นหลักฐานว่า schedule เปิดจริง
+รายการสุดท้ายเป็น Phase 3 hardening และไม่ block การเริ่ม Phase 2 ตาม Owner waiver นี้
 
 ## 4. Region drift gate
 
-Live Postgres อยู่ `sfo` แต่ Web/API และ IaC desired state อยู่ Singapore การเปลี่ยน
-region ของ service ที่มี volume เป็น destructive-risk operation และมี downtime
+Postgres ถูกย้ายจาก `sfo` ไป `asia-southeast1-eqsg3a` หลัง Product Owner ยืนยัน
+destructive impact และยอมรับ downtime การตรวจหลังย้ายได้ผลดังนี้
 
-- [ ] Backup และ isolated restore rehearsal ผ่านก่อน
-- [ ] กำหนด downtime window ประมาณ 5–15 นาที
-- [ ] ย้าย Postgres/volume ไป Singapore ด้วย Railway-supported migration flow
-- [ ] ตรวจ readiness, migration version, row counts, login, Board และ MCP หลังย้าย
-- [ ] ยืนยัน Board request latency กลับสู่ค่าปกติ
+- [x] Product Owner ยอมรับการข้าม backup และข้อมูลเริ่มต้นอาจสูญหาย
+- [x] Apply Railway IaC destructive plan หลังตรวจ plan ตรงตาม intent
+- [x] Postgres, API และ Web deployment ใหม่เป็น `SUCCESS` ทั้งหมด
+- [x] Postgres live config อยู่ Singapore และยัง mount volume เดิม
+- [x] API pre-deploy migration และ Railway readiness ผ่าน
+- [x] HTTPS, OAuth redirect, MCP auth boundary และ unauthenticated API smoke ผ่าน
+- [ ] ยืนยัน authenticated Board และ MCP mutation ตาม Section 2
 
 ## 5. Final surface hardening
 
@@ -77,9 +81,10 @@ region ของ service ที่มี volume เป็น destructive-risk op
 
 - [ ] ยืนยัน Cloudflare SSL/TLS mode เป็น Full หรือ Full (Strict) และไม่มี redirect loop
 - [ ] ลบ Railway-generated Web domain เมื่อ Owner ยืนยัน exact domain
-- [ ] รัน network exposure และ secret log scan ซ้ำ
-- [ ] Merge `hotfix/0.1.2` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
-- [ ] ยืนยัน GitHub CI และ Railway deployment ล่าสุดเป็น success
+- [x] รัน network exposure และ secret log scan ซ้ำ
+- [ ] Merge `hotfix/0.1.3` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
+- [ ] ยืนยัน GitHub CI ของ `hotfix/0.1.3` เป็น success
+- [x] ยืนยัน Railway deployment ล่าสุดทั้งสาม service เป็น success
 
 ## 6. Stop condition
 
