@@ -1,4 +1,13 @@
-export type UserType = Record<string, any> | null;
+export type AuthUser = {
+  id: string;
+  identityId: string;
+  email: string;
+  displayName: string;
+  photoURL: string | null;
+  role: 'admin';
+};
+
+export type UserType = AuthUser | null;
 
 export type AuthState = {
   user: UserType;

@@ -37,7 +37,17 @@ export class AuthService {
       if (existingIdentity) {
         return transaction.authIdentity.update({
           where: { id: existingIdentity.id },
-          data: { email, emailVerified: true, lastLoginAt: new Date() },
+          data: {
+            email,
+            emailVerified: true,
+            lastLoginAt: new Date(),
+            user: {
+              update: {
+                displayName: identity.displayName,
+                avatarUrl: identity.avatarUrl,
+              },
+            },
+          },
           include: { user: true },
         });
       }
@@ -72,6 +82,14 @@ export class AuthService {
         await transaction.workspace.update({
           where: { id: workspace.id },
           data: { activeProjectId: project.id },
+        });
+      } else {
+        user = await transaction.user.update({
+          where: { id: user.id },
+          data: {
+            displayName: identity.displayName,
+            avatarUrl: identity.avatarUrl,
+          },
         });
       }
 
