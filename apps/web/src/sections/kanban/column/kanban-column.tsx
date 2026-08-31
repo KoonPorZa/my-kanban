@@ -18,6 +18,7 @@ import { KanbanColumnToolBar } from './kanban-column-toolbar';
 // ----------------------------------------------------------------------
 
 type ColumnProps = {
+  projectId: string;
   disabled?: boolean;
   sx?: SxProps<Theme>;
   tasks: IKanbanTask[];
@@ -28,7 +29,7 @@ type ColumnProps = {
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 
-export function KanbanColumn({ children, column, tasks, disabled, sx }: ColumnProps) {
+export function KanbanColumn({ projectId, children, column, tasks, disabled, sx }: ColumnProps) {
   const openAddTask = useBoolean();
 
   const { attributes, isDragging, listeners, setNodeRef, transition, active, over, transform } =
@@ -49,7 +50,7 @@ export function KanbanColumn({ children, column, tasks, disabled, sx }: ColumnPr
     async (columnName: string) => {
       try {
         if (column.name !== columnName) {
-          updateColumn(column.id, columnName);
+          await updateColumn(projectId, column, columnName);
 
           toast.success('Update success!', { position: 'top-center' });
         }
@@ -57,38 +58,38 @@ export function KanbanColumn({ children, column, tasks, disabled, sx }: ColumnPr
         console.error(error);
       }
     },
-    [column.id, column.name]
+    [column, projectId]
   );
 
   const handleClearColumn = useCallback(async () => {
     try {
-      clearColumn(column.id);
+      await clearColumn(projectId, column);
     } catch (error) {
       console.error(error);
     }
-  }, [column.id]);
+  }, [column, projectId]);
 
   const handleDeleteColumn = useCallback(async () => {
     try {
-      deleteColumn(column.id);
+      await deleteColumn(projectId, column);
 
       toast.success('Delete success!', { position: 'top-center' });
     } catch (error) {
       console.error(error);
     }
-  }, [column.id]);
+  }, [column, projectId]);
 
   const handleAddTask = useCallback(
     async (taskData: IKanbanTask) => {
       try {
-        createTask(column.id, taskData);
+        await createTask(projectId, column.id, taskData);
 
         openAddTask.onFalse();
       } catch (error) {
         console.error(error);
       }
     },
-    [column.id, openAddTask]
+    [column.id, openAddTask, projectId]
   );
 
   return (

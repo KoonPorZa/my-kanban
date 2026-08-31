@@ -57,6 +57,11 @@ export const navData: NavSectionProps['data'] = [
         icon: ICONS.kanban,
         info: <Label>v{CONFIG.appVersion}</Label>,
       },
+      {
+        title: 'AI access',
+        path: paths.dashboard.mcpAccess,
+        icon: ICONS.lock,
+      },
       { title: 'Two', path: paths.dashboard.two, icon: ICONS.ecommerce },
       { title: 'Three', path: paths.dashboard.three, icon: ICONS.analytics },
     ],

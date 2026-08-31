@@ -1,5 +1,4 @@
 import type { IKanbanTask } from 'src/types/kanban';
-import type { UniqueIdentifier } from '@dnd-kit/core';
 import type { Theme, SxProps } from '@mui/material/styles';
 
 import { useSortable } from '@dnd-kit/sortable';
@@ -16,13 +15,13 @@ import { KanbanDetails } from '../details/kanban-details';
 // ----------------------------------------------------------------------
 
 type TaskItemProps = {
+  projectId: string;
   disabled?: boolean;
   sx?: SxProps<Theme>;
   task: IKanbanTask;
-  columnId: UniqueIdentifier;
 };
 
-export function KanbanTaskItem({ task, disabled, columnId, sx }: TaskItemProps) {
+export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps) {
   const taskDetailsDialog = useBoolean();
 
   const { setNodeRef, listeners, isDragging, isSorting, transform, transition } = useSortable({
@@ -34,22 +33,22 @@ export function KanbanTaskItem({ task, disabled, columnId, sx }: TaskItemProps) 
 
   const handleDeleteTask = useCallback(async () => {
     try {
-      deleteTask(columnId, task.id);
+      await deleteTask(projectId, task);
       toast.success('Delete success!', { position: 'top-center' });
     } catch (error) {
       console.error(error);
     }
-  }, [columnId, task.id]);
+  }, [projectId, task]);
 
   const handleUpdateTask = useCallback(
     async (taskData: IKanbanTask) => {
       try {
-        updateTask(columnId, taskData);
+        await updateTask(projectId, taskData);
       } catch (error) {
         console.error(error);
       }
     },
-    [columnId]
+    [projectId]
   );
 
   const renderTaskDetailsDialog = () => (

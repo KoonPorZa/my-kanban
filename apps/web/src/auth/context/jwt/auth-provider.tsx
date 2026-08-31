@@ -6,16 +6,11 @@ import { useMemo, useEffect, useCallback } from 'react';
 import axios, { endpoints } from 'src/lib/axios';
 
 import { AuthContext } from '../auth-context';
+import { toAuthUser, type SessionPrincipalResponse } from './session-user';
 
 import type { AuthState } from '../../types';
 
 // ----------------------------------------------------------------------
-
-/**
- * NOTE:
- * We only build demo at basic level.
- * Customer will need to do some extra handling yourself if you want to extend the logic and other features...
- */
 
 type Props = {
   children: React.ReactNode;
@@ -26,8 +21,8 @@ export function AuthProvider({ children }: Props) {
 
   const checkUserSession = useCallback(async () => {
     try {
-      const res = await axios.get(endpoints.auth.me);
-      setState({ user: res.data, loading: false });
+      const { data } = await axios.get<SessionPrincipalResponse>(endpoints.auth.me);
+      setState({ user: toAuthUser(data), loading: false });
     } catch {
       setState({ user: null, loading: false });
     }
@@ -46,7 +41,7 @@ export function AuthProvider({ children }: Props) {
 
   const memoizedValue = useMemo(
     () => ({
-      user: state.user ? { ...state.user, role: state.user?.role ?? 'admin' } : null,
+      user: state.user,
       checkUserSession,
       loading: status === 'loading',
       authenticated: status === 'authenticated',

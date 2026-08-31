@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban and Scrum Board Product Requirements
-version: 1.4
+version: 1.5
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -17,6 +17,8 @@ tags: [product, design, kanban, scrum, personal-productivity]
 ผลิตภัณฑ์รุ่นแรกเป็นแบบ single-user และ server-backed ผู้ใช้ต้อง login ด้วย Google
 email ที่อยู่ใน allowlist ก่อนเข้าถึงข้อมูล โดย Next.js, NestJS API และ PostgreSQL
 deploy บน Railway ข้อมูลต้อง sync ผ่าน PostgreSQL และมีระบบสำรองกับกู้คืนด้วยไฟล์ JSON
+ระบบ production ต้องมี Remote MCP สำหรับให้ Codex CLI และ Claude Code CLI อ่านและ
+จัดการ Task ภายใน Project ที่เลือกได้
 
 ## 1. Purpose & scope
 
@@ -48,6 +50,8 @@ MVP ต้องทำให้วงจรจัดการงานส่ว�
 - สรุปผล Sprint และเก็บข้อมูล velocity สำหรับการวางแผนรอบถัดไป
 - สำรองและกู้คืนข้อมูลทั้งหมดได้โดยไม่พึ่งบริการภายนอก
 - เข้าถึงข้อมูลชุดเดียวกันอย่างปลอดภัยผ่าน `kanban.koonporza.com`
+- ให้ AI client อ่านและจัดการ Task ผ่าน Project-scoped MCP session โดยไม่ปะปน
+  ข้อมูลระหว่าง Project
 
 ### 1.4 Non-goals for MVP
 
@@ -59,7 +63,7 @@ MVP ต้องทำให้วงจรจัดการงานส่ว�
 - การแจ้งเตือนผ่านอีเมล โทรศัพท์ หรือ push notification
 - ระบบชำระเงิน subscription และสิทธิ์ตามแผนราคา
 - Gantt chart, resource planning และ portfolio management
-- AI สร้างงาน แบ่งงาน หรือจัดลำดับความสำคัญอัตโนมัติ
+- AI ตัดสินใจจัดลำดับความสำคัญหรือเปลี่ยนโครงสร้าง Board โดยอัตโนมัติ
 - Native mobile application และ offline-first mode
 
 ### 1.5 Success metrics
@@ -94,6 +98,9 @@ MVP ต้องทำให้วงจรจัดการงานส่ว�
 - **Rank**: ลำดับของ Issue ภายใน Backlog หรือ Column
 - **Server-backed**: รูปแบบที่ PostgreSQL ฝั่ง server เป็น source of truth
 - **Owner**: ผู้ใช้คนเดียวที่มีสิทธิ์เข้าถึง Workspace ใน MVP
+- **MCP session**: Connection ของ AI client ที่ถูกล็อกกับ Project เดียวด้วย token
+- **MCP access token**: Credential อายุ 90 วันที่ให้สิทธิ์ Task เต็มรูปแบบใน
+  Project เดียว
 
 ## 3. Requirements, constraints & guidelines
 
@@ -241,8 +248,8 @@ MVP ต้องตอบสนองเร็วสำหรับข้อม�
 ข้อมูลของผู้ใช้ต้องส่งเฉพาะผ่าน authenticated application flow และจัดเก็บใน
 PostgreSQL ที่กำหนด
 
-- **SEC-001**: MVP ต้องส่งเนื้อหา Project หรือ Issue เฉพาะระหว่าง Browser, Railway
-  Web, Railway API และ Railway PostgreSQL
+- **SEC-001**: MVP ต้องส่งเนื้อหา Project หรือ Issue เฉพาะระหว่าง Browser หรือ
+  MCP client ที่ได้รับอนุญาต, Railway Web, Railway API และ Railway PostgreSQL
 - **SEC-002**: ระบบต้อง sanitize rich text หรือ Markdown ก่อน render
 - **SEC-003**: ไฟล์ import ต้องมีข้อจำกัดขนาด 10 MB และต้องตรวจชนิดข้อมูลทุก field
 - **SEC-004**: ระบบต้องไม่เก็บ token, password หรือ secret ไว้ใน export file
@@ -269,6 +276,29 @@ PostgreSQL ที่กำหนด
 - **GUD-006**: Board surface ต้อง reuse และ adapt implementation จาก
   `~/Minimal_TypeScript_v7.0.0/next-ts/src/sections/kanban` เป็น baseline ห้ามสร้าง
   Kanban board ใหม่จากศูนย์โดยไม่มีเหตุผลด้าน requirement หรือ accessibility
+
+### 3.12 MCP task management requirements
+
+MCP ต้องให้ AI จัดการ Task ได้โดยรักษา Project isolation เป็น authorization
+invariant และ reuse business logic ของ REST API
+
+- **REQ-080**: Production ต้องเปิด Remote MCP ที่
+  `https://kanban.koonporza.com/mcp` ผ่าน Web proxy
+- **REQ-081**: MCP token หนึ่งตัวต้องผูกกับ Project เดียวและเปลี่ยน Project ใน
+  session ไม่ได้
+- **REQ-082**: Project ต้องมี token หลายตัวได้ โดยทุก token หมดอายุคงที่ 90 วัน
+- **REQ-083**: Token ต้องแสดงครั้งเดียว เก็บเฉพาะ hash และ revoke แยกตัวได้
+- **REQ-084**: MCP ต้องอ่าน Project และ Column ได้ แต่แก้ไขได้เฉพาะ Task
+- **REQ-085**: MCP ต้องอ่าน ค้นหา สร้าง แก้ไข ย้าย archive และ restore Task ได้
+- **REQ-086**: MCP ต้องไม่มี hard-delete, Project mutation หรือ Column mutation
+- **REQ-087**: `create_tasks` ต้องสร้างได้สูงสุด 10 รายการแบบ atomic
+- **REQ-088**: Mutation อื่นต้องทำทีละ Task พร้อม version และ idempotency contract
+- **REQ-089**: ทุก MCP mutation ต้องมี audit event และไม่เก็บ raw token หรือ
+  description ทั้งฉบับ
+- **REQ-090**: Board ต้อง refetch ทุก 15 วินาทีและเมื่อ browser กลับมา focus
+- **REQ-091**: macOS helper CLI ต้องเก็บ token ใน Keychain และเปิด Codex หรือ
+  Claude Code ด้วย Project alias ที่เลือก
+- **REQ-092**: MCP Project binding ต้องไม่พึ่ง Git repository หรือ working directory
 
 ## 4. Interfaces & data contracts
 
@@ -536,6 +566,7 @@ integration
 - **EXT-001**: Railway สำหรับ hosting, private networking และ PostgreSQL
 - **SVC-001**: Cloudflare สำหรับ DNS และ optional proxy
 - **SVC-002**: Google OpenID Connect สำหรับ login เท่านั้น
+- **SVC-003**: Model Context Protocol สำหรับ AI Task access
 - **DAT-001**: Railway PostgreSQL เป็น authoritative data source
 - **COM-001**: ไม่มีข้อกำหนด compliance เฉพาะ นอกเหนือจาก privacy และ
   accessibility requirements ในเอกสารนี้
@@ -615,6 +646,18 @@ Phase นี้สร้างวงจร capture และ flow management ท
 - Search, filters, Focus view และ keyboard alternatives
 - Stop condition: ผู้ใช้จัดการ Project แบบ Kanban ได้ครบโดยข้อมูลไม่หาย
 
+### Phase 1A: MCP task access
+
+Phase นี้เพิ่ม AI Task access หลัง Issues application service เป็น source of truth
+ร่วมสำหรับ REST และ MCP
+
+- Project-scoped token management และ audit log
+- Remote MCP tools สำหรับ Task และ Project context แบบ read-only
+- Board polling ทุก 15 วินาทีและ refetch on focus
+- macOS helper CLI สำหรับ Codex และ Claude Code
+- Stop condition: AI clients สอง session ใช้คนละ Project พร้อมกันโดยไม่มีข้อมูล
+  หรือ mutation ข้าม Project
+
 ### Phase 2: Scrum MVP
 
 Phase นี้เพิ่ม planning และ review บนฐาน Kanban ที่ผ่านการตรวจแล้ว
@@ -640,6 +683,7 @@ Phase นี้ปิดความเสี่ยงด้านข้อม�
 - **DEC-003**: กำหนด merge behavior เมื่อ import มี entity ที่ถูก archive แล้ว
 - **DEC-004**: ตัดสินใจว่า Markdown description รองรับ image attachment ในรุ่นใด
 - **DEC-005**: กำหนด browser support matrix และ performance test device
+- **DEC-006**: เลือกช่องทางแจก macOS helper CLI ระหว่าง npm package กับ Homebrew
 
 ## 13. Related specifications / further reading
 
@@ -651,15 +695,17 @@ trace การตัดสินใจและ test coverage ได้
 - UX and interaction specification: ยังไม่สร้าง
 - [PostgreSQL data specification](./spec-data-kanban-postgresql.md)
 - [Railway deployment specification](./spec-infrastructure-railway-deployment.md)
+- [MCP task management integration](./spec-integration-mcp-task-management.md)
 - Test plan: ยังไม่สร้าง
 
 ## 14. Next steps
 
-ขั้นตอนต่อไปคือยืนยัน product assumptions ที่มีผลต่อ architecture แล้วแตก PRD เป็น
-implementation plan ที่จัดลำดับตาม Phase 0 ถึง Phase 3
+Foundation, Google authentication และ Board persistence ผ่าน local verification แล้ว
+ขั้นตอนต่อไปคือเพิ่ม MCP adapter โดย reuse application services เดิมเพื่อไม่ให้
+business rule แยกกัน
 
-1. ยืนยันว่า Project แรกต้องเป็น Kanban หรือ Scrum โดยค่าเริ่มต้น
-2. ลงทะเบียน Google OAuth client และกำหนด email allowlist ใน environment
-3. สร้าง UX specification พร้อม wireframe สำหรับ Backlog, Board และ Issue detail
-4. Scaffold pnpm workspace สำหรับ Next.js Web และ NestJS API
-5. แตก requirement เป็น implementation tasks พร้อม test mapping
+1. เพิ่ม MCP token management, idempotency และ audit log migration
+2. เพิ่ม Streamable HTTP adapter และ Web `/mcp` proxy
+3. เพิ่ม Project-token UI และ macOS helper CLI
+4. ทดสอบ cross-Project isolation ด้วย Codex CLI และ Claude Code CLI
+5. ทำ UX specification และ test mapping สำหรับ Kanban, MCP และ Scrum phases

@@ -4,15 +4,16 @@
   "private": true,
   "packageManager": "pnpm@10.26.2",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --if-present dev",
     "dev:web": "pnpm --filter @my-kanban/web dev",
     "dev:api": "pnpm --filter @my-kanban/api dev",
+    "cli:build": "pnpm --filter @my-kanban/cli build",
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm railway:validate && pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,yaml,yml,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,yaml,yml,md}\"",
@@ -20,9 +21,12 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:migrate": "pnpm --filter @my-kanban/api prisma:migrate",
-    "db:generate": "pnpm --filter @my-kanban/api prisma:generate"
+    "db:generate": "pnpm --filter @my-kanban/api prisma:generate",
+    "api:generate": "pnpm --filter @my-kanban/api openapi:generate && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @my-kanban/api-client generate",
+    "railway:validate": "pnpm --filter @my-kanban/api exec tsc -p ../../.railway/tsconfig.json"
   },
   "devDependencies": {
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "railway": "^3.11.0"
   }
 }

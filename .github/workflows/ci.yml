@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: my_kanban_test
+          POSTGRES_USER: my_kanban
+          POSTGRES_PASSWORD: my_kanban_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U my_kanban -d my_kanban_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://my_kanban:my_kanban_ci@localhost:5432/my_kanban_test?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Apply test database migrations
+        run: corepack pnpm --filter @my-kanban/api prisma:deploy
+
+      - name: Check formatting
+        run: corepack pnpm format:check
+
+      - name: Check types
+        run: corepack pnpm typecheck
+
+      - name: Lint
+        run: corepack pnpm lint
+
+      - name: Test
+        run: corepack pnpm test
+
+      - name: Build
+        run: corepack pnpm build

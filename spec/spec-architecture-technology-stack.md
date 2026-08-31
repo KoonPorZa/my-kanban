@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Technology Stack
-version: 1.2
+version: 1.3
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -34,6 +34,7 @@ Stack ต่อไปนี้เป็นข้อสรุปที่ต้�
 | Drag and drop    | dnd-kit                                                    |
 | API              | NestJS บน default Express adapter                          |
 | API style        | REST JSON และ Swagger/OpenAPI                              |
+| MCP              | Official TypeScript SDK และ Streamable HTTP                |
 | API client       | Orval generated TypeScript client และ TanStack Query hooks |
 | Authentication   | Passport, `@nestjs/passport` และ `passport-google-oidc`    |
 | Session          | `express-session` และ `connect-pg-simple`                  |
@@ -46,6 +47,7 @@ Stack ต่อไปนี้เป็นข้อสรุปที่ต้�
 | API tests        | Nest testing utilities, Supertest และ Vitest               |
 | End-to-end tests | Playwright                                                 |
 | Local containers | Colima, Docker CLI และ Docker Compose                      |
+| Helper CLI       | Node.js TypeScript CLI และ macOS Keychain                  |
 | Production       | Railway Web, API และ PostgreSQL services                   |
 | DNS              | Cloudflare สำหรับ `kanban.koonporza.com`                   |
 
@@ -63,6 +65,8 @@ Stack ต่อไปนี้เป็นข้อสรุปที่ต้�
 - **Supporting package**: Library ที่ช่วย framework ที่เลือกโดยไม่เพิ่ม service ใหม่
 - **Minimal source**: Component, layout และ theme ต้นแบบจาก
   `~/Minimal_TypeScript_v7.0.0/next-ts/src`
+- **Streamable HTTP**: Remote MCP transport สำหรับ request และ session lifecycle
+- **Project-scoped token**: Bearer token อายุ 90 วันที่ bind Project เดียว
 
 ## 3. Requirements, constraints & guidelines
 
@@ -73,7 +77,8 @@ Stack ต่อไปนี้เป็นข้อสรุปที่ต้�
 
 Monorepo ต้องใช้ tooling จำนวนน้อยและ build แต่ละ application แยกได้
 
-- **STK-001**: Repository ต้องใช้ pnpm workspace โดยมี `apps/web` และ `apps/api`
+- **STK-001**: Repository ต้องใช้ pnpm workspace โดยมี `apps/web`, `apps/api` และ
+  `apps/cli`
 - **STK-002**: ห้ามเพิ่ม Turborepo ใน MVP จนกว่า build time แสดงความจำเป็น
 - **STK-003**: Node.js major version ต้อง pin ให้ตรงกันใน local, CI และ Railway
 - **STK-004**: TypeScript ต้องเปิด strict mode ใน Web, API และ generated client
@@ -115,6 +120,8 @@ Web stack ต้องใช้ component และ form infrastructure ที�
   แทนด้วย TanStack Query และ Orval client ก่อนถือว่า Kanban persistence เสร็จสมบูรณ์
 - **WEB-019**: MVP ต้องตัด collaboration-only surface ได้แก่ assignee, comment และ
   attachment ออกจาก Issue detail จนกว่าจะมี requirement ใหม่
+- **WEB-020**: Board query ต้องใช้ TanStack Query refetch interval 15 วินาทีและ
+  refetch on window focus เพื่อรับ MCP mutations
 
 ### 3.3 API stack requirements
 
@@ -131,6 +138,11 @@ API ต้องใช้ conventions มาตรฐานของ NestJS บ�
 - **API-008**: Structured logging ต้องใช้ Pino ผ่าน NestJS integration
 - **API-009**: API ต้องใช้ built-in dependency injection และ module boundaries
 - **API-010**: ห้ามเพิ่ม CQRS package ใน MVP
+- **API-011**: MCP transport ต้องใช้ official `@modelcontextprotocol/sdk`
+- **API-012**: MCP adapter ต้องอยู่ใน NestJS `McpModule` และใช้ Streamable HTTP
+- **API-013**: MCP tools ต้องเรียก application services เดียวกับ REST controllers
+- **API-014**: `McpModule` ห้าม inject Prisma service เพื่อทำ Task mutation โดยตรง
+- **API-015**: MCP tool schema ต้อง reuse หรือ derive จาก domain DTO validation
 
 ### 3.4 Authentication requirements
 
@@ -158,6 +170,12 @@ password, registration form หรือ JWT token ใน browser
   `https://kanban.koonporza.com/api/v1/auth/google/callback`
 - **AUT-016**: API ต้องตั้ง Express `trust proxy` ให้ secure cookie ทำงานหลัง Railway
   และ Next.js proxy
+- **AUT-017**: MCP authentication ต้องใช้ high-entropy bearer token ที่ผูกกับ
+  Project เดียว ไม่ใช้ Google browser cookie
+- **AUT-018**: MCP token ต้อง hash ด้วย Node.js `crypto`, แสดงครั้งเดียวและหมดอายุ
+  คงที่ 90 วัน
+- **AUT-019**: MCP token ต้องส่งผ่าน `Authorization` header และห้ามอยู่ใน URL
+- **AUT-020**: MCP MVP ไม่ต้อง implement OAuth authorization server
 
 ### 3.5 Data stack requirements
 
@@ -185,6 +203,8 @@ Testing stack ต้องใช้ Vitest เป็น test runner หลัก
   เรียก Google จริงในทุก CI run
 - **TST-008**: Production smoke test ต้องตรวจ login redirect, session, Board query และ
   API readiness
+- **TST-009**: MCP integration tests ต้องใช้ PostgreSQL จริงและอย่างน้อยสอง Project
+- **TST-010**: CLI tests ต้อง mock macOS Keychain command และ child process spawn
 
 ### 3.7 Local development requirements
 
@@ -198,6 +218,8 @@ Local development ต้องใช้ Colima เป็น container runtime �
 - **DEV-006**: Local Google callback ต้องลงทะเบียนแยกจาก production callback
 - **DEV-007**: `.env.example` ต้องระบุชื่อ variable โดยไม่มี secret จริง
 - **DEV-008**: Local database data ต้องอยู่ใน named Docker volume
+- **DEV-009**: MCP local endpoint ต้องผ่าน Web proxy path `/mcp` เหมือน production
+- **DEV-010**: Helper CLI development รองรับ macOS เท่านั้นใน MVP
 
 ### 3.8 Explicit non-goals
 
@@ -213,6 +235,9 @@ Local development ต้องใช้ Colima เป็น container runtime �
 - **NON-008**: GraphQL
 - **NON-009**: Separate public API domain
 - **NON-010**: Additional global frontend state library
+- **NON-011**: Separate MCP service หรือ public MCP subdomain
+- **NON-012**: Linux และ Windows credential-store support
+- **NON-013**: MCP OAuth server, prompts, resources หรือ server push
 
 ### 3.9 Decision boundary
 
@@ -226,6 +251,9 @@ Implementation สามารถเลือก supporting packages และ c
 - **DEC-004**: เลือก Docker Compose layout และ test database naming ได้
 - **DEC-005**: ห้ามเปลี่ยน framework, ORM, database หรือเพิ่ม Railway service โดยไม่
   ขออนุมัติผู้ใช้
+- **DEC-006**: เลือก minor/patch version ของ MCP SDK ที่เข้ากับ Node.js ที่ pin ได้
+- **DEC-007**: ใช้ Node.js built-ins สำหรับ argument parsing, hashing และ child
+  process ก่อนเพิ่ม CLI framework หรือ native Keychain package
 
 ## 4. Interfaces & data contracts
 
@@ -247,6 +275,10 @@ Auth variables อยู่ใน API service เท่านั้น ยกเ
 
 `ALLOWED_GOOGLE_EMAILS` ต้อง parse เป็น set โดย trim whitespace, lowercase และตัด
 ค่าว่าง ห้าม log ค่าเต็มของ allowlist ใน production
+
+MCP raw token ไม่ใช่ environment variable ของ Railway Token ถูกสร้างจาก
+cryptographically secure random bytes, แสดงครั้งเดียวและเก็บเฉพาะ hash ใน
+PostgreSQL
 
 ### 4.2 API client generation contract
 
@@ -283,6 +315,7 @@ Package names เป็น contract สำหรับ pnpm filters และ Ra
 ```text
 apps/web                 @my-kanban/web
 apps/api                 @my-kanban/api
+apps/cli                 @my-kanban/cli
 packages/api-client      @my-kanban/api-client
 packages/config          @my-kanban/config
 ```
@@ -313,6 +346,12 @@ Technology stack ถือว่าล็อกและพร้อม implemen
   reuse หรือ adapt Minimal component ก่อนสร้าง reusable component ใหม่
 - **AC-011**: Given production build หรือ Railway build, When resolve Web imports,
   Then ต้องไม่มี import ที่ชี้ไป `~/Minimal_TypeScript_v7.0.0` หรือ absolute home path
+- **AC-012**: Given MCP token ของ Project A, When เรียก Task ของ Project B, Then API
+  ต้องไม่คืนข้อมูลหรือทำ mutation
+- **AC-013**: Given `create_tasks` มากกว่า 10 รายการ, When เรียก MCP, Then request ต้อง
+  fail ก่อนเริ่ม transaction
+- **AC-014**: Given `kanban codex work`, When helper เปิด child process, Then token
+  ต้องมาจาก macOS Keychain alias `work` และไม่ถูกเขียนลงไฟล์
 
 ## 6. Test automation strategy
 
@@ -337,6 +376,11 @@ Google OIDC ลดการจัดเก็บ password และ email allowl
 registration หรือ role TanStack Query เหมาะกับ server state และ optimistic Board
 mutation ขณะที่ React state/context เพียงพอกับ UI state ของ MVP
 
+Streamable HTTP ทำให้ Codex และ Claude Code ใช้ production MCP endpoint เดียวกัน
+ได้ Project-scoped token ทำหน้าที่เป็น capability ที่จำกัด domain scope ตั้งแต่
+connection เริ่ม ส่วน macOS Keychain ลดการเก็บ long-lived token ใน repository หรือ
+shell history
+
 Vitest เป็น runner เดียวสำหรับ Web และ API unit tests ส่วน Supertest และ Playwright
 ครอบคลุม HTTP กับ browser boundary Colima กับ Docker Compose ทำให้ local PostgreSQL
 ใกล้เคียง Railway โดยไม่ containerize hot-reload processes ทั้งหมด
@@ -358,6 +402,7 @@ Stack นี้พึ่ง identity, hosting และ DNS providers ที่�
 Google ได้รับเฉพาะข้อมูล authentication scopes ที่กำหนด
 
 - **SVC-001**: Google Identity สำหรับ login
+- **SVC-002**: Model Context Protocol สำหรับ AI Task management
 
 ### Infrastructure dependencies
 
@@ -380,6 +425,8 @@ Exact versions ต้องบันทึกใน manifests และ lockfile
 - **PLT-001**: Node.js LTS
 - **PLT-002**: pnpm
 - **PLT-003**: TypeScript
+- **PLT-004**: Official MCP TypeScript SDK
+- **PLT-005**: macOS `/usr/bin/security`
 
 ### Compliance dependencies
 
@@ -400,6 +447,9 @@ Implementation ต้องรองรับกรณีต่อไปนี�
 - Secure cookie บน localhost ต้องใช้ environment-specific setting
 - Generated client เก่ากว่า OpenAPI ต้องถูกตรวจใน CI
 - Colima หยุดทำงานต้องแสดง database connection error ที่แก้ไขได้
+- MCP token หมดอายุหรือถูก revoke ระหว่าง session ต้อง fail request ถัดไป
+- MCP batch retry ด้วย idempotency key เดิมต้องไม่สร้าง Task ซ้ำ
+- Helper CLI เปิดจาก non-Git directory ต้องทำงานเหมือนเดิม
 
 ## 10. Validation criteria
 
@@ -416,6 +466,9 @@ Implementation ต้องรองรับกรณีต่อไปนี�
 - Web source ไม่มี absolute import ไป `~/Minimal_TypeScript_v7.0.0`
 - Vitest, Supertest และ Playwright smoke tests ผ่าน
 - Railway configuration ไม่มี public API หรือ public PostgreSQL endpoint
+- MCP cross-Project isolation, atomic batch และ audit tests ผ่าน
+- Codex กับ Claude Code เชื่อม `/mcp` ด้วย token คนละ Project ได้
+- macOS Keychain ไม่มี raw token หลัง `kanban project remove`
 
 ## 11. Related specifications / further reading
 
@@ -426,6 +479,10 @@ Implementation ต้องรองรับกรณีต่อไปนี�
 - [System architecture](./spec-architecture-kanban-system.md)
 - [PostgreSQL data specification](./spec-data-kanban-postgresql.md)
 - [Railway deployment specification](./spec-infrastructure-railway-deployment.md)
+- [MCP task management integration](./spec-integration-mcp-task-management.md)
+- [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+- [OpenAI Codex configuration reference](https://developers.openai.com/codex/config-reference)
+- [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp)
 - [NestJS sessions](https://docs.nestjs.com/techniques/session)
 - [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)
 - [Passport Google OIDC strategy](https://www.passportjs.org/packages/passport-google-oidc/)
@@ -436,13 +493,12 @@ Implementation ต้องรองรับกรณีต่อไปนี�
 
 ## 12. Next steps
 
-Foundation repository, Kanban baseline, NestJS API และ local PostgreSQL พร้อมแล้ว
-ขั้นตอนถัดไปคือทำ vertical slice จาก Google login ผ่าน Web proxy ไป API และ
-PostgreSQL จากนั้นจึงเปลี่ยน local Kanban adapter เป็น generated client
+Foundation repository, Kanban persistence, generated client และ local PostgreSQL
+พร้อมแล้ว ขั้นตอนถัดไปคือเพิ่ม MCP adapter ที่ reuse application services เดียวกับ REST
 
-1. เพิ่ม Google OIDC, email allowlist guard และ PostgreSQL session store
-2. เพิ่ม Project, Board และ Issue modules พร้อม DTO และ authorization scope
-3. สร้าง OpenAPI artifact กับ Orval client
-4. เปลี่ยน local Kanban adapter เป็น API persistence พร้อม optimistic rollback
-5. เพิ่ม Web, API integration และ Playwright smoke tests
+1. เพิ่ม MCP token, idempotency และ audit schema
+2. เพิ่ม `McpModule` พร้อม Streamable HTTP transport
+3. เพิ่ม Project-token UI และ Web `/mcp` proxy
+4. เพิ่ม `apps/cli` สำหรับ macOS Keychain, Codex และ Claude Code
+5. เพิ่ม MCP integration/security tests
 6. Deploy และตรวจ Railway หลังผู้ใช้สั่ง deploy โดยตรง

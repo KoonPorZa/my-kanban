@@ -1,0 +1,1252 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/auth/google": {
+      "get": {
+        "operationId": "AuthController_loginWithGoogle_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Start Google OpenID Connect login",
+        "tags": ["auth"]
+      }
+    },
+    "/api/v1/auth/google/callback": {
+      "get": {
+        "operationId": "AuthController_googleCallback_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Complete Google OpenID Connect login",
+        "tags": ["auth"]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "AuthController_me_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get the authenticated owner profile",
+        "tags": ["auth"]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout_v1",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Destroy the current login session",
+        "tags": ["auth"]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Process liveness probe",
+        "tags": ["health"]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Database readiness probe",
+        "tags": ["health"]
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List owner projects",
+        "tags": ["projects"]
+      }
+    },
+    "/api/v1/projects/{projectId}/issues": {
+      "post": {
+        "operationId": "createIssue",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a task in a project",
+        "tags": ["issues"]
+      }
+    },
+    "/api/v1/issues/{issueId}": {
+      "patch": {
+        "operationId": "updateIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a task",
+        "tags": ["issues"]
+      }
+    },
+    "/api/v1/issues/{issueId}/move": {
+      "post": {
+        "operationId": "moveIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Move and reorder a task",
+        "tags": ["issues"]
+      }
+    },
+    "/api/v1/issues/{issueId}/archive": {
+      "post": {
+        "operationId": "archiveIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionedIssueCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archive a task",
+        "tags": ["issues"]
+      }
+    },
+    "/api/v1/projects/{projectId}/board": {
+      "get": {
+        "operationId": "getBoard",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get the active board aggregate",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/projects/{projectId}/columns": {
+      "post": {
+        "operationId": "createColumn",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateColumnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a board column",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/columns/{columnId}": {
+      "patch": {
+        "operationId": "updateColumn",
+        "parameters": [
+          {
+            "name": "columnId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateColumnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a board column",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/columns/{columnId}/move": {
+      "post": {
+        "operationId": "moveColumn",
+        "parameters": [
+          {
+            "name": "columnId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveColumnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Move and reorder a board column",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/columns/{columnId}/clear": {
+      "post": {
+        "operationId": "clearColumn",
+        "parameters": [
+          {
+            "name": "columnId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionedColumnCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archive every task in a column",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/columns/{columnId}/archive": {
+      "post": {
+        "operationId": "archiveColumn",
+        "parameters": [
+          {
+            "name": "columnId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionedColumnCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archive a board column and its tasks",
+        "tags": ["boards"]
+      }
+    },
+    "/api/v1/projects/{projectId}/mcp-tokens": {
+      "get": {
+        "operationId": "listMcpTokens",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/McpTokenResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List Project MCP tokens",
+        "tags": ["mcp-tokens"]
+      },
+      "post": {
+        "operationId": "createMcpToken",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMcpTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedMcpTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a Project MCP token",
+        "tags": ["mcp-tokens"]
+      }
+    },
+    "/api/v1/projects/{projectId}/mcp-tokens/{tokenId}/revoke": {
+      "post": {
+        "operationId": "revokeMcpToken",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tokenId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke a Project MCP token",
+        "tags": ["mcp-tokens"]
+      }
+    },
+    "/api/v1/projects/{projectId}/mcp-audit-events": {
+      "get": {
+        "operationId": "listMcpAuditEvents",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/McpAuditEventResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List Project MCP audit events",
+        "tags": ["mcp-tokens"]
+      }
+    }
+  },
+  "info": {
+    "title": "My Kanban API",
+    "description": "Private API for the personal Kanban and Scrum board",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "ProjectSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["kanban", "scrum"]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "name", "color", "mode", "version"]
+      },
+      "ProjectListResponseDto": {
+        "type": "object",
+        "properties": {
+          "activeProjectId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectSummaryDto"
+            }
+          }
+        },
+        "required": ["activeProjectId", "projects"]
+      },
+      "CreateIssueDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "columnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 50000,
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "enum": ["task", "story", "bug", "chore"],
+            "default": "task"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "medium", "low", "none"],
+            "default": "medium"
+          },
+          "labels": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "storyPoints": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isBlocked": {
+            "type": "boolean",
+            "default": false
+          },
+          "blockedReason": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "beforeIssueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "afterIssueId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["title", "columnId"]
+      },
+      "IssueResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "columnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["task", "story", "bug", "chore"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "medium", "low", "none"]
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "storyPoints": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "isBlocked": {
+            "type": "boolean"
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "columnId",
+          "title",
+          "description",
+          "type",
+          "priority",
+          "labels",
+          "storyPoints",
+          "dueDate",
+          "isBlocked",
+          "blockedReason",
+          "completedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateIssueDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 50000,
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "enum": ["task", "story", "bug", "chore"],
+            "default": "task"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "medium", "low", "none"],
+            "default": "medium"
+          },
+          "labels": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "storyPoints": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isBlocked": {
+            "type": "boolean",
+            "default": false
+          },
+          "blockedReason": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "MoveIssueDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "targetColumnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beforeIssueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "afterIssueId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["version", "targetColumnId"]
+      },
+      "VersionedIssueCommandDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "BoardProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["kanban", "scrum"]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "name", "mode", "version"]
+      },
+      "BoardColumnResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "done"]
+          },
+          "wipLimit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "projectId", "name", "category", "wipLimit", "version"]
+      },
+      "BoardResponseDto": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/BoardProjectDto"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardColumnResponseDto"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueResponseDto"
+            }
+          }
+        },
+        "required": ["project", "columns", "issues"]
+      },
+      "CreateColumnDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "category": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "done"],
+            "default": "todo"
+          },
+          "wipLimit": {
+            "type": "number",
+            "minimum": 1,
+            "nullable": true
+          },
+          "beforeColumnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "afterColumnId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateColumnDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "wipLimit": {
+            "type": "number",
+            "minimum": 1,
+            "nullable": true
+          }
+        },
+        "required": ["version"]
+      },
+      "MoveColumnDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "beforeColumnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "afterColumnId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["version"]
+      },
+      "VersionedColumnCommandDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "McpTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          },
+          "tokenPrefix": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "label",
+          "clientType",
+          "tokenPrefix",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt",
+          "createdAt"
+        ]
+      },
+      "CreateMcpTokenDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          }
+        },
+        "required": ["label", "clientType"]
+      },
+      "CreatedMcpTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          },
+          "tokenPrefix": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rawToken": {
+            "type": "string",
+            "description": "Shown once. The API never returns this value again."
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "label",
+          "clientType",
+          "tokenPrefix",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt",
+          "createdAt",
+          "rawToken"
+        ]
+      },
+      "McpAuditEventResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenLabel": {
+            "type": "string"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["success", "rejected", "failed"]
+          },
+          "changedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "tokenId",
+          "tokenLabel",
+          "issueId",
+          "toolName",
+          "requestId",
+          "outcome",
+          "changedFields",
+          "errorCode",
+          "createdAt"
+        ]
+      }
+    }
+  }
+}

@@ -2,6 +2,9 @@
   "name": "@my-kanban/api",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
@@ -14,6 +17,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
+    "openapi:generate": "ts-node src/openapi/generate-openapi.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -24,17 +28,20 @@
     "@nestjs/platform-express": "^11.2.3",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.5.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@prisma/client": "^6.19.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "connect-pg-simple": "^10.0.0",
+    "express": "^5.1.0",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "joi": "^18.0.1",
     "passport": "^0.7.0",
     "passport-google-oidc": "^0.1.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

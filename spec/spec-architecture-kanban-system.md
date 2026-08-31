@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban System Architecture
-version: 1.2
+version: 1.3
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -29,6 +29,7 @@ authentication, API conventions, repository structure และ operational beha
   component system บน MUI
 - **Backend**: NestJS บน default Express adapter
 - **API style**: REST JSON ภายใต้ prefix `/api/v1`
+- **AI integration**: Remote MCP Streamable HTTP ที่ `/mcp`
 - **API contract**: OpenAPI ที่สร้างจาก backend source
 - **Database**: PostgreSQL
 - **ORM and migration**: Prisma ORM และ Prisma Migrate
@@ -86,6 +87,9 @@ metadata ได้ ส่วน Prisma มี NestJS recipe อย่างเ�
 - **ARC-006**: Web service ต้อง forward API traffic ไป API service ผ่าน Railway
   private network
 - **ARC-007**: API service ไม่ต้องมี public domain ใน MVP
+- **ARC-008**: MCP client ต้องเรียก `/mcp` ผ่าน public Web domain เท่านั้น
+- **ARC-009**: Web service ต้อง forward MCP traffic ไป API ผ่าน Railway private
+  network โดยรักษา MCP session headers
 
 ### 3.2 Backend module boundaries
 
@@ -100,6 +104,10 @@ NestJS modules ต้องจัดตาม domain capability ไม่ใช�
 - **MOD-007**: `HealthModule` ต้องให้ liveness และ readiness endpoints
 - **MOD-008**: Module ต้องสื่อสารผ่าน public service interface และห้าม import
   internal repository ของ module อื่น
+- **MOD-009**: `McpModule` ต้องดูแล protocol transport, token guard, tool schemas
+  และ audit orchestration
+- **MOD-010**: `McpModule` ต้องเรียก `IssuesModule` และ `BoardsModule` ผ่าน public
+  application service และห้ามเรียก Prisma โดยตรง
 
 ### 3.3 API and contract requirements
 
@@ -136,6 +144,11 @@ API ต้องเป็น versioned REST contract ที่ตรวจสอ
 - **AUT-010**: Logout ต้องทำลาย session ฝั่ง server
 - **AUT-011**: Auth guard ต้องตรวจ email allowlist ซ้ำทุก request เพื่อ revoke ได้ทันที
 - **AUT-012**: MVP ต้องไม่มี local password, registration form หรือ JWT browser flow
+- **AUT-013**: MCP ต้องใช้ bearer token ที่ผูกกับ Project เดียวและหมดอายุ 90 วัน
+- **AUT-014**: MCP token ต้องเป็น principal คนละชนิดกับ Google browser session
+- **AUT-015**: Project binding ต้อง derive จาก token เท่านั้นและห้าม override ด้วย
+  tool input
+- **AUT-016**: Token ต้องเก็บแบบ hash, แสดง raw secret ครั้งเดียวและ revoke รายตัวได้
 
 ### 3.5 Consistency and transaction requirements
 
@@ -200,6 +213,19 @@ Browser
   -> PostgreSQL
 ```
 
+Remote MCP ใช้ public origin เดียวกัน แต่แยก credential และ protocol adapter
+
+```text
+Codex CLI / Claude Code CLI
+  -> HTTPS /mcp on Web domain
+  -> Next.js MCP proxy
+  -> Railway private network
+  -> NestJS McpModule
+  -> Issues and Boards application services
+  -> Prisma
+  -> PostgreSQL
+```
+
 ### 4.2 Error envelope
 
 Error response ต้องใช้ contract นี้สำหรับ error ที่ client จัดการได้
@@ -222,26 +248,27 @@ type ApiError = {
 
 Endpoint groups ต่อไปนี้เป็น surface ขั้นต่ำของ MVP
 
-| Method   | Path                                  | Purpose                        |
-| -------- | ------------------------------------- | ------------------------------ |
-| GET      | `/api/v1/auth/google`                 | เริ่ม Google OIDC login        |
-| GET      | `/api/v1/auth/google/callback`        | ตรวจ callback และสร้าง session |
-| POST     | `/api/v1/auth/logout`                 | ทำลาย session                  |
-| GET      | `/api/v1/me`                          | อ่าน Owner profile             |
-| GET/POST | `/api/v1/projects`                    | อ่านและสร้าง Project           |
-| PATCH    | `/api/v1/projects/:projectId`         | แก้ Project                    |
-| GET/POST | `/api/v1/projects/:projectId/issues`  | อ่านและสร้าง Issue             |
-| PATCH    | `/api/v1/issues/:issueId`             | แก้ Issue                      |
-| POST     | `/api/v1/issues/:issueId/move`        | ย้ายและ reorder Issue          |
-| GET/POST | `/api/v1/projects/:projectId/columns` | อ่านและสร้าง Column            |
-| GET/POST | `/api/v1/projects/:projectId/sprints` | อ่านและสร้าง Sprint            |
-| POST     | `/api/v1/sprints/:sprintId/start`     | เริ่ม Sprint                   |
-| POST     | `/api/v1/sprints/:sprintId/complete`  | ปิด Sprint                     |
-| GET      | `/api/v1/projects/:projectId/board`   | อ่าน Board aggregate           |
-| GET      | `/api/v1/export`                      | export Workspace               |
-| POST     | `/api/v1/import`                      | validate และ import Workspace  |
-| GET      | `/health/live`                        | process liveness               |
-| GET      | `/health/ready`                       | application readiness          |
+| Method          | Path                                  | Purpose                        |
+| --------------- | ------------------------------------- | ------------------------------ |
+| GET             | `/api/v1/auth/google`                 | เริ่ม Google OIDC login        |
+| GET             | `/api/v1/auth/google/callback`        | ตรวจ callback และสร้าง session |
+| POST            | `/api/v1/auth/logout`                 | ทำลาย session                  |
+| GET             | `/api/v1/me`                          | อ่าน Owner profile             |
+| GET/POST        | `/api/v1/projects`                    | อ่านและสร้าง Project           |
+| PATCH           | `/api/v1/projects/:projectId`         | แก้ Project                    |
+| GET/POST        | `/api/v1/projects/:projectId/issues`  | อ่านและสร้าง Issue             |
+| PATCH           | `/api/v1/issues/:issueId`             | แก้ Issue                      |
+| POST            | `/api/v1/issues/:issueId/move`        | ย้ายและ reorder Issue          |
+| GET/POST        | `/api/v1/projects/:projectId/columns` | อ่านและสร้าง Column            |
+| GET/POST        | `/api/v1/projects/:projectId/sprints` | อ่านและสร้าง Sprint            |
+| POST            | `/api/v1/sprints/:sprintId/start`     | เริ่ม Sprint                   |
+| POST            | `/api/v1/sprints/:sprintId/complete`  | ปิด Sprint                     |
+| GET             | `/api/v1/projects/:projectId/board`   | อ่าน Board aggregate           |
+| GET             | `/api/v1/export`                      | export Workspace               |
+| POST            | `/api/v1/import`                      | validate และ import Workspace  |
+| GET/POST/DELETE | `/mcp`                                | MCP Streamable HTTP transport  |
+| GET             | `/health/live`                        | process liveness               |
+| GET             | `/health/ready`                       | application readiness          |
 
 ### 4.4 Repository layout
 
@@ -252,7 +279,8 @@ Repository ต้องเปลี่ยนเป็น shared pnpm workspace �
 my-kanban/
 ├── apps/
 │   ├── web/                 # Existing Next.js application
-│   └── api/                 # NestJS + Express application
+│   ├── api/                 # NestJS + Express application
+│   └── cli/                 # macOS helper CLI for MCP sessions
 ├── packages/
 │   ├── api-client/          # Generated OpenAPI client
 │   └── config/              # Shared TypeScript and lint config only
@@ -325,12 +353,14 @@ repository method นั้นโดยยังคง transaction boundary เ�
 - **EXT-001**: Railway platform สำหรับ build, deploy, networking และ environment
 - **EXT-002**: Railway PostgreSQL สำหรับ durable relational storage
 - **EXT-003**: Google OpenID Connect สำหรับยืนยันตัวตน
+- **EXT-004**: Codex CLI และ Claude Code CLI ในฐานะ MCP clients
 
 ### Third-party services
 
 MVP ส่งเฉพาะ authentication scopes ที่จำเป็นไป Google และไม่ส่ง domain data
 
 - **SVC-001**: Google Identity สำหรับ login
+- **SVC-002**: Model Context Protocol สำหรับ Project-scoped Task access
 
 ### Infrastructure dependencies
 
@@ -355,6 +385,8 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 - **PLT-002**: pnpm version จาก `packageManager`
 - **PLT-003**: NestJS default Express adapter
 - **PLT-004**: Prisma ORM และ PostgreSQL driver
+- **PLT-005**: Official MCP TypeScript SDK และ Streamable HTTP transport
+- **PLT-006**: macOS Keychain สำหรับ local helper credentials
 
 ### Compliance dependencies
 
@@ -374,6 +406,11 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 - Web และ API deploy คนละ revision ที่ contract ไม่เข้ากันต้องถูกป้องกันใน CI
 - Database transaction conflict ต้อง retry แบบ bounded หรือคืน `409`
 - API log formatter ล้มเหลวต้องไม่ทำให้ request หลักล้มเหลว
+- MCP token ของ Project A อ้าง Task ID จาก Project B ต้องไม่เปิดเผยว่า Task มีอยู่
+- MCP client retry `create_tasks` ต้องไม่สร้าง Task ซ้ำ
+- Token ถูก revoke ระหว่าง session ต้องถูกปฏิเสธใน request ถัดไป
+- Helper CLI เปิดจาก directory ที่ไม่ใช่ Git repository ต้องยัง resolve Project
+  จาก token ได้
 
 ## 10. Validation criteria
 
@@ -387,6 +424,9 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 - Railway healthcheck ใช้ `/health/ready` และผ่านก่อน traffic switch
 - Browser ไม่เข้าถึง PostgreSQL หรือ Railway private API address โดยตรง
 - Secret และ connection string ไม่ปรากฏใน client bundle หรือ logs
+- MCP isolation tests พิสูจน์ว่า token ข้าม Project ไม่ได้
+- MCP adapter และ REST controller ใช้ Issues application service ชุดเดียวกัน
+- Codex และ Claude Code sessions ที่ใช้คนละ token เห็นคนละ Project
 
 ## 11. Related specifications / further reading
 
@@ -396,6 +436,7 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 - [Technology stack specification](./spec-architecture-technology-stack.md)
 - [PostgreSQL data specification](./spec-data-kanban-postgresql.md)
 - [Railway infrastructure specification](./spec-infrastructure-railway-deployment.md)
+- [MCP task management integration](./spec-integration-mcp-task-management.md)
 - [NestJS session documentation](https://docs.nestjs.com/techniques/session)
 - [NestJS OpenAPI documentation](https://docs.nestjs.com/openapi/introduction)
 - [NestJS Prisma recipe](https://docs.nestjs.com/recipes/prisma)
@@ -403,12 +444,11 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 
 ## 12. Next steps
 
-Repository foundation และ request path ถึง PostgreSQL พิสูจน์แล้ว ขั้นตอนต่อไปคือ
-เพิ่ม authentication และ business modules โดยรักษา service boundary เดิม
+Repository foundation, Board application services และ request path ถึง PostgreSQL
+พิสูจน์แล้ว ขั้นตอนต่อไปคือเพิ่ม MCP adapter โดยรักษา service boundary เดิม
 
-1. ทำ Google OIDC, email allowlist และ PostgreSQL session
-2. เพิ่ม Project, Board และ Issue modules พร้อม owner scoping
-3. สร้าง OpenAPI artifact และ Orval client
-4. เชื่อม Kanban UI กับ API และเพิ่ม optimistic rollback
-5. เพิ่ม integration และ end-to-end tests
-6. ตั้ง Railway services เมื่อผู้ใช้สั่ง deploy โดยตรง
+1. เพิ่ม MCP token, idempotency และ audit schema
+2. เพิ่ม `McpModule` และ Web `/mcp` proxy
+3. เพิ่ม Project-token management UI
+4. เพิ่ม macOS helper CLI และ client smoke tests
+5. ตั้ง Railway services เมื่อผู้ใช้สั่ง deploy โดยตรง

@@ -6,11 +6,12 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import type { Express } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
+import { SwaggerModule } from '@nestjs/swagger';
+import { ConsoleLogger, ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
+import { createOpenApiDocument } from './openapi/openapi-document';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -20,6 +21,17 @@ async function bootstrap() {
   const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
   const sessionTtlSeconds = config.getOrThrow<number>('SESSION_TTL_SECONDS');
   const PgSessionStore = connectPgSimple(session);
+
+  app.useLogger(
+    new ConsoleLogger({
+      json: isProduction,
+      colors: !isProduction,
+      compact: isProduction,
+      logLevels: isProduction
+        ? ['log', 'warn', 'error']
+        : ['log', 'warn', 'error', 'debug', 'verbose'],
+    })
+  );
 
   if (isProduction) {
     const expressApp = app.getHttpAdapter().getInstance() as Express;
@@ -54,6 +66,7 @@ async function bootstrap() {
     exclude: [
       { path: 'health/live', method: RequestMethod.GET },
       { path: 'health/ready', method: RequestMethod.GET },
+      { path: 'mcp', method: RequestMethod.ALL },
     ],
   });
   app.enableVersioning({
@@ -74,12 +87,7 @@ async function bootstrap() {
   );
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('My Kanban API')
-    .setDescription('Private API for the personal Kanban and Scrum board')
-    .setVersion('1.0')
-    .build();
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+  SwaggerModule.setup('api/docs', app, createOpenApiDocument(app));
 
   const port = config.getOrThrow<number>('PORT');
   await app.listen(port, '0.0.0.0');
