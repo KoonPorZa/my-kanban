@@ -1,8 +1,8 @@
 ---
 title: Production Closeout Record
-version: 1.2
+version: 1.3
 date_created: 2026-08-31
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 owner: Product owner
 tags: [production, railway, mcp, recovery, phase-2-gate]
 ---
@@ -16,7 +16,7 @@ Product Owner บันทึกการเลื่อนรายการน
 
 ## 1. Verified production evidence
 
-Automated checks รันกับ production เมื่อ August 31, 2026 และได้ผลดังนี้
+Automated checks รันกับ production เมื่อ August 31 และ September 1, 2026 และได้ผลดังนี้
 
 | Check              | Evidence                                                     | Result  |
 | ------------------ | ------------------------------------------------------------ | ------- |
@@ -35,6 +35,7 @@ Automated checks รันกับ production เมื่อ August 31, 2026 �
 | Region placement   | Web, API และ Postgres อยู่ Singapore                         | Passed  |
 | Post-region deploy | Postgres, API และ Web deployment ใหม่                        | Success |
 | Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง            | Passed  |
+| Public bypass      | Railway-generated Web domain ถูกลบและตอบ `404`               | Passed  |
 
 ## 2. Authenticated acceptance
 
@@ -94,11 +95,12 @@ destructive impact และยอมรับ downtime การตรวจห
 หลัง Board และ recovery checks ผ่านแล้วจึงลด bypass surface และปิด record
 
 - [ ] ยืนยัน Cloudflare SSL/TLS mode เป็น Full หรือ Full (Strict) และไม่มี redirect loop
-- [ ] ลบ Railway-generated Web domain
-      `web-production-4f560e.up.railway.app` เมื่อ Owner ยืนยัน exact domain
+- [x] ลบ Railway-generated Web domain
+      `web-production-4f560e.up.railway.app` หลัง Owner ยืนยัน exact domain
+- [x] ยืนยัน Web เหลือเฉพาะ custom domain `kanban.koonporza.com` และตอบ `200`
 - [x] รัน network exposure และ secret log scan ซ้ำ
-- [x] Merge `hotfix/0.1.3` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
-- [x] ยืนยัน GitHub CI ของ `hotfix/0.1.3` เป็น success
+- [x] Merge `hotfix/0.1.4` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
+- [x] ยืนยัน GitHub CI ของ `hotfix/0.1.4` เป็น success
 - [x] ยืนยัน Railway deployment ล่าสุดทั้งสาม service เป็น success
 
 ## 6. Stop condition
