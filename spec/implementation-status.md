@@ -111,7 +111,7 @@ Foundation มี evidence ล่าสุดดังนี้
 | --------------------------------- | ------------------------------------ |
 | `corepack pnpm typecheck`         | Passed                               |
 | `corepack pnpm lint`              | Passed                               |
-| `corepack pnpm test`              | Passed; API 21, Web 2, CLI 3 tests   |
+| `corepack pnpm test`              | Passed; API 21, Web 2, CLI 4 tests   |
 | `corepack pnpm build`             | Passed for Web, API, client, and CLI |
 | `corepack pnpm api:generate`      | Passed; deterministic output         |
 | `corepack pnpm format:check`      | Passed                               |

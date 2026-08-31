@@ -6,7 +6,7 @@ export class MacOsKeychain {
   async save(alias: string, token: string) {
     await runSecurity(
       ['add-generic-password', '-U', '-s', KEYCHAIN_SERVICE, '-a', alias, '-w'],
-      `${token}\n`
+      keychainPasswordInput(token)
     );
   }
 
@@ -19,6 +19,10 @@ export class MacOsKeychain {
   async remove(alias: string) {
     await runSecurity(['delete-generic-password', '-s', KEYCHAIN_SERVICE, '-a', alias]);
   }
+}
+
+export function keychainPasswordInput(token: string) {
+  return `${token}\n${token}\n`;
 }
 
 function runSecurity(args: string[], input?: string) {
