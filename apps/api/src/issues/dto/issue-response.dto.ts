@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export class ChecklistItemResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty()
+  isCompleted!: boolean;
+}
+
 export class IssueResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
@@ -39,6 +50,12 @@ export class IssueResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   blockedReason!: string | null;
+
+  @ApiProperty({ type: [ChecklistItemResponseDto] })
+  checklist!: ChecklistItemResponseDto[];
+
+  @ApiProperty({ minimum: 0 })
+  checklistIncompleteCount!: number;
 
   @ApiProperty({ nullable: true, type: String, format: 'date-time' })
   completedAt!: string | null;

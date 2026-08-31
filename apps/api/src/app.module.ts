@@ -15,6 +15,7 @@ import { DomainExceptionFilter } from './common/http/domain-exception.filter';
 import { McpModule } from './mcp/mcp.module';
 import { RequestLoggingMiddleware } from './common/http/request-logging.middleware';
 import { SprintsModule } from './sprints/sprints.module';
+import { WorkspaceTransferModule } from './workspace-transfer/workspace-transfer.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SprintsModule } from './sprints/sprints.module';
     IssuesModule,
     BoardsModule,
     SprintsModule,
+    WorkspaceTransferModule,
     McpModule,
   ],
   providers: [

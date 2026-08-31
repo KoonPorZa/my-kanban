@@ -10,6 +10,7 @@ import { DomainExceptionFilter } from '../src/common/http/domain-exception.filte
 import { PrismaService } from '../src/database/prisma.service';
 import { CreateIssueDto } from '../src/issues/dto/issue-mutation.dto';
 import { CreateSprintDto } from '../src/sprints/dto/sprint-mutation.dto';
+import { BulkSprintIssuesDto } from '../src/sprints/dto/sprint-mutation.dto';
 import { PrismaSprintsRepository } from '../src/sprints/prisma-sprints.repository';
 import { SprintsController } from '../src/sprints/sprints.controller';
 import { SprintsService } from '../src/sprints/sprints.service';
@@ -36,6 +37,12 @@ describe('Sprint HTTP API', () => {
       [Object, String, CreateIssueDto],
       SprintsController.prototype,
       'createIssue'
+    );
+    Reflect.defineMetadata(
+      'design:paramtypes',
+      [Object, String, BulkSprintIssuesDto],
+      SprintsController.prototype,
+      'bulkAddIssues'
     );
     const sprints = new SprintsService(new PrismaSprintsRepository(prisma));
     const moduleRef = await Test.createTestingModule({
@@ -137,6 +144,32 @@ describe('Sprint HTTP API', () => {
       title: 'Atomic quick add',
       storyPoints: 3,
     });
+  });
+
+  it('assigns multiple tasks through the bulk Sprint endpoint', async () => {
+    const sprint = await request(app.getHttpServer())
+      .post(`/api/v1/projects/${projectId}/sprints`)
+      .send({ name: 'Bulk HTTP Sprint', startDate: '2026-11-01', endDate: '2026-11-14' })
+      .expect(201);
+    const tasks = await Promise.all([
+      prisma.issue.create({
+        data: { projectId, columnId: todoColumnId, title: 'Bulk one', rank: 4096n },
+      }),
+      prisma.issue.create({
+        data: { projectId, columnId: todoColumnId, title: 'Bulk two', rank: 5120n },
+      }),
+    ]);
+
+    const assigned = await request(app.getHttpServer())
+      .post(`/api/v1/sprints/${sprint.body.id}/issues/bulk`)
+      .send({ issueIds: tasks.map(({ id }) => id) })
+      .expect(200);
+    expect(assigned.body.issueCount).toBe(2);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/sprints/${sprint.body.id}/issues/bulk`)
+      .send({ issueIds: [] })
+      .expect(400);
   });
 
   async function createFixture() {

@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.12
+version: 1.14
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -10,12 +10,15 @@ tags: [implementation, status, phase-0, kanban]
 # Introduction
 
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
-August 31, 2026 Foundation, Google authentication, Board persistence,
-Project-scoped Remote MCP Phase 1A, MVP release-readiness และ production deploy
-ผ่าน automated verification ตามรายการด้านล่างแล้ว Phase 2 Scrum MVP มี implementation
-และ automated verification ใน local workspace แล้ว ส่วน authenticated browser acceptance
-และ production release ยังไม่เกิดขึ้น งาน credential-gated และ recovery ที่ยังค้างบันทึกไว้ใน
-`production-closeout.md`
+September 1, 2026 Foundation, Google authentication, Board persistence,
+Project-scoped Remote MCP Phase 1A, Phase 2 Scrum และ Phase 3 MVP hardening มี
+implementation ใน local workspace แล้ว Phase 3 เพิ่ม Project lifecycle, Issue fields/checklist,
+Backlog reorder/quick-add, filters/Focus, recovery, export/import, permanent-delete safety,
+accessibility และ reliability gates
+
+Automated gate ผ่านครบ ส่วน authenticated browser acceptance ด้วย Google session จริงและ
+production release ของ Phase 3 ยังไม่เกิดขึ้น จึงยังไม่เปิด release branch หรือ merge เข้า
+`main`
 
 ## 1. Completed foundation
 
@@ -146,47 +149,85 @@ Phase 2 มี vertical slice ที่ใช้งานต่อเนื่�
 - Scrum Clear Column กระทบเฉพาะ task ของ Active Sprint; Delete Column ถูกปิดใน Scrum mode
   เพื่อไม่ให้ task ที่ซ่อนอยู่สูญหาย
 
-Automated gate ผ่านครบและ code review อนุมัติให้ merge เข้า `develop` ได้ แต่ manual checklist
-ใน `spec-ux-scrum-mvp.md` ยังต้องทดสอบด้วย Google session จริงก่อนเปิด release branch และยัง
-ไม่ถือว่า Phase 2 production-ready
+Automated gate ของ Phase 2 ผ่านและ implementation ถูกรวมเป็นฐานของ Phase 3 แล้ว
 
-## 7. Verification record
+## 7. Phase 3 MVP completion
 
-Foundation มี evidence ล่าสุดดังนี้
+Phase 3 บน `feature/mvp-hardening` ปิดช่องว่างของ Personal Kanban/Scrum MVP ดังนี้
 
-| Check                             | Result                               |
-| --------------------------------- | ------------------------------------ |
-| `corepack pnpm railway:validate`  | Passed                               |
-| `corepack pnpm typecheck`         | Passed                               |
-| `corepack pnpm lint`              | Passed                               |
-| `corepack pnpm test`              | Passed; API 60, Web 22, CLI 4 tests  |
-| `corepack pnpm build`             | Passed for Web, API, client, and CLI |
-| `corepack pnpm api:generate`      | Passed; deterministic output         |
-| `corepack pnpm format:check`      | Passed                               |
-| `prisma validate`                 | Passed                               |
-| Local Prisma migration status     | Passed; 6 migrations, none pending   |
-| `GET /health/live`                | `200 {"status":"ok"}`                |
-| `GET /health/ready`               | `200 {"status":"ready"}`             |
-| Swagger JSON                      | Served from `/api/docs-json`         |
-| `GET /api/v1/me` without session  | `401`                                |
-| `GET /api/v1/auth/google`         | `302` with state and nonce           |
-| Google callback in browser        | Passed with allowed account          |
-| Authenticated profile UI          | Displays Google name/email/avatar    |
-| Direct `POST /mcp`, invalid token | `401`, MCP JSON-RPC error            |
-| Web proxy `POST /mcp`             | Preserves `401` and bearer challenge |
-| MCP protocol integration          | 7 cases passed against PostgreSQL    |
-| Production Web root               | `200` over verified HTTPS            |
-| Production Web liveness           | `200`                                |
-| Production API unauthenticated    | `401` through same-origin proxy      |
-| Production MCP missing/invalid    | `401` through public Web proxy       |
-| Google OAuth production redirect  | Correct HTTPS callback               |
-| API/Postgres public exposure      | No domain and no TCP proxy           |
-| Production credential log scan    | No token/header pattern found        |
-| Railway deployment status         | Web, API, Postgres `SUCCESS`         |
-| Railway production region         | All services in Singapore            |
-| Post-region Prisma deploy         | 3 migrations, none pending           |
+- Project selector สร้าง แก้ไข สลับ mode/color/Done retention, activate และ soft archive ได้
+  พร้อม default workflow `To do / In progress / Review / Done`
+- Task detail แก้ type, priority, labels, Story Point, due date, blocked state/reason และ
+  ordered checklist ที่ persist ใน PostgreSQL ได้ รวม duplicate, archive, Undo และ later restore
+- การย้ายเข้า Done เมื่อ checklist ไม่ครบต้องยืนยันทั้ง Web/API; move เป็น optimistic ภายใน
+  100 ms, ยิง request ครั้งเดียว, rollback ได้ และ Undo ใช้ version ล่าสุด
+- Column บังคับ first/last invariants, ตั้ง WIP, แสดง count/point/over-limit warning และ archive
+  พร้อมย้าย Task ไป destination ใน transaction เดียว
+- Scrum planning รองรับ title-only quick-add, pointer/touch/keyboard Backlog reorder ภายใน
+  Board column และ bulk-add สูงสุด 100 Task ต่อ request
+- Board search/filter รองรับ type, priority, label, due, blocked, Backlog/assigned/เจาะจง Sprint,
+  AND ข้ามมิติ, OR ภายในมิติ, Focus และ Done retention ต่อ Project
+- Mobile แสดงทีละ Column; core touch targets ขั้นต่ำ 44 x 44 pixels; card เปิด/ย้ายด้วย keyboard
+  และ automated axe scan ไม่มี serious/critical finding
+- Data & recovery export/import schema v1 จำกัด 10 MB, transaction แบบ replace หรือ merge
+  ID-based newer-wins, มี read-only preview ก่อน confirm, ไม่ export session/identity/MCP secret
+  และ rollback เมื่อ validation ล้มเหลว
+- Archived Task restore ได้ภายหลัง; permanent delete Project/Sprint/Issue แสดง impact, หน่วง
+  5 วินาทีและ Undo ยกเลิกก่อน request โดย API ยัง owner-scoped, versioned และ transactional;
+  Project ที่มี MCP audit อายุไม่ครบ 90 วันจะถูกปฏิเสธการลบ
+- Mapper ข้าม Task record ที่ผิด contract ทีละ recordและแสดง warning โดย Board ที่เหลือยังใช้ได้
+- Session 401 จาก protected action พากลับ Google sign-in พร้อม `returnTo` โดยไม่ retry mutation
 
-## 8. Deployment status
+Labels ใน MVP เก็บเป็น plain string array ภายใน Issue aggregate ไม่ใช่ Label entity แยก การ
+export/import และ filter ครอบคลุมค่าดังกล่าวครบ
+
+## 8. Verification record
+
+Evidence ล่าสุดของ full local MVP gate มีดังนี้
+
+| Check                               | Result                               |
+| ----------------------------------- | ------------------------------------ |
+| `corepack pnpm railway:validate`    | Passed                               |
+| `corepack pnpm typecheck`           | Passed                               |
+| `corepack pnpm lint`                | Passed                               |
+| `corepack pnpm test`                | Passed; API 96, Web 75, CLI 4 tests  |
+| `corepack pnpm build`               | Passed for Web, API, client, and CLI |
+| `corepack pnpm api:generate`        | Passed twice; deterministic output   |
+| `corepack pnpm format:check`        | Passed                               |
+| `prisma validate`                   | Passed                               |
+| Local Prisma migration status       | Passed; 7 migrations, none pending   |
+| Web Phase 3 authored-state coverage | 80.01% lines/statements; gate passed |
+| Playwright deterministic suite      | Passed; 9 tests                      |
+| Automated accessibility scan        | No serious or critical violation     |
+| Board usable/perceived move         | Under 2.5 s / under 100 ms           |
+| Mobile core touch targets           | All measured targets at least 44 px  |
+| `GET /health/live`                  | `200 {"status":"ok"}`                |
+| `GET /health/ready`                 | `200 {"status":"ready"}`             |
+| Swagger JSON                        | Served from `/api/docs-json`         |
+| `GET /api/v1/me` without session    | `401`                                |
+| `GET /api/v1/auth/google`           | `302` with state and nonce           |
+| Google callback in browser          | Passed with allowed account          |
+| Authenticated profile UI            | Displays Google name/email/avatar    |
+| Direct `POST /mcp`, invalid token   | `401`, MCP JSON-RPC error            |
+| Web proxy `POST /mcp`               | Preserves `401` and bearer challenge |
+| MCP protocol integration            | 7 cases passed against PostgreSQL    |
+| Production Web root                 | `200` over verified HTTPS            |
+| Production Web liveness             | `200`                                |
+| Production API unauthenticated      | `401` through same-origin proxy      |
+| Production MCP missing/invalid      | `401` through public Web proxy       |
+| Google OAuth production redirect    | Correct HTTPS callback               |
+| API/Postgres public exposure        | No domain and no TCP proxy           |
+| Production credential log scan      | No token/header pattern found        |
+| Railway deployment status           | Web, API, Postgres `SUCCESS`         |
+| Railway production region           | All services in Singapore            |
+| Post-region Prisma deploy           | 3 migrations, none pending           |
+
+Coverage gate ครอบคลุม 8 authored Phase 3 state/domain modules ที่ประกาศไว้ใน Vitest config
+และไม่รวม generated code หรือ Minimal starter surface ที่ไม่ได้อยู่ใน product route ได้ 80.01%
+lines/statements, 79.60% branches และ 84.72% functions รายละเอียด requirement-to-evidence
+อยู่ใน `mvp-validation-matrix.md`
+
+## 9. Deployment status
 
 Railway production มี `web`, `api` และ `Postgres` online โดย Web เหลือ public custom
 domain `kanban.koonporza.com` เพียงรายการเดียว Railway-generated domain
@@ -200,17 +241,14 @@ Web, API และ Postgres อยู่ Singapore region เดียวกั�
 ครบ 3 รายการโดยไม่มี migration ค้าง Volume เดิมยัง mount อยู่และ application smoke
 ผ่านหลังย้าย
 
-Railway plan ปัจจุบันไม่รองรับ volume backup/PITR Product Owner ยอมรับการข้าม backup
-ก่อน Phase 2 เพราะยังไม่มีข้อมูลใช้งานที่ต้องเก็บ การเปิด backup หรือ logical export
-ก่อนมีข้อมูลสำคัญเป็น hardening task ใน Phase 3
+Railway plan ปัจจุบันไม่รองรับ volume backup/PITR Product Owner ยอมรับข้อจำกัดนี้ Logical
+Workspace export/import ใน Phase 3 เป็น portable recovery path แต่ไม่แทน point-in-time database
+backup
 
-## 9. Next steps
+## 10. Next steps
 
-1. Merge `feature/scrum-mvp` เข้า `develop` ตาม Gitflow หลัง automated gate และ review ผ่าน
-2. Implement Phase 3 recovery/hardening บน feature branch จาก `develop`
-3. Run authenticated local Scrum checklist: mode switch, Story Point, planning, start,
-   scoped Board, add/remove, complete ทั้งสอง destination, history และ reload persistence
-4. เปิด release branch, deploy migration/API/Web ไป Railway แล้วทำ production smoke ก่อน merge
+1. Run authenticated local browser acceptance ตาม `mvp-validation-matrix.md`
+2. Commit `feature/mvp-hardening` และ merge เข้า `develop` ตาม Gitflow เมื่อ manual gate ผ่าน
+3. เปิด release branch, deploy migration/API/Web ไป Railway แล้วทำ production smoke ก่อน merge
    เข้า `main`
-5. MCP mutation, revoke และ Project-isolation acceptance ยัง defer และต้องผ่านก่อนประกาศ
-   MCP production-ready
+4. MCP manual acceptance ยังคง defer ตามคำสั่ง Product Owner และไม่ block browser MVP

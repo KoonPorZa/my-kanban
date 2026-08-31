@@ -20,6 +20,9 @@
     "tsc:dev": "pnpm dev & pnpm tsc:watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "dev:e2e": "next dev -p 8084",
     "tsc:watch": "tsc --noEmit --watch",
     "tsc:print": "npx tsc --showConfig"
   },
@@ -67,7 +70,9 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.23.0",
+    "@playwright/test": "^1.62.1",
     "@svgr/webpack": "^8.1.0",
     "@types/autosuggest-highlight": "^3.2.3",
     "@types/node": "^22.13.14",
@@ -76,6 +81,7 @@
     "@types/react-dom": "^19.0.4",
     "@types/stylis": "^4.2.7",
     "@typescript-eslint/parser": "^8.28.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^9.23.0",
     "eslint-import-resolver-typescript": "^4.2.7",
     "eslint-plugin-import": "^2.31.0",

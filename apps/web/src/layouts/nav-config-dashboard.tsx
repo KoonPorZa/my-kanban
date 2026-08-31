@@ -67,6 +67,11 @@ export const navData: NavSectionProps['data'] = [
         path: paths.dashboard.mcpAccess,
         icon: ICONS.lock,
       },
+      {
+        title: 'Workspace data',
+        path: paths.dashboard.data,
+        icon: ICONS.file,
+      },
       { title: 'Two', path: paths.dashboard.two, icon: ICONS.ecommerce },
       { title: 'Three', path: paths.dashboard.three, icon: ICONS.analytics },
     ],

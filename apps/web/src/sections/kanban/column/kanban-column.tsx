@@ -5,9 +5,10 @@ import type { IKanbanTask, IKanbanColumn } from 'src/types/kanban';
 import { useCallback } from 'react';
 import { CSS } from '@dnd-kit/utilities';
 import { useBoolean } from 'minimal-shared/hooks';
+import { useGetBoard as useGetBoardApi } from '@my-kanban/api-client';
 import { useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable';
 
-import { createTask, clearColumn, deleteColumn, updateColumn } from 'src/actions/kanban';
+import { createTask, clearColumn, updateColumn, archiveColumn } from 'src/actions/kanban';
 
 import { toast } from 'src/components/snackbar';
 
@@ -30,16 +31,11 @@ type ColumnProps = {
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 
-export function KanbanColumn({
-  projectId,
-  scrumMode,
-  children,
-  column,
-  tasks,
-  disabled,
-  sx,
-}: ColumnProps) {
+export function KanbanColumn({ projectId, children, column, tasks, disabled, sx }: ColumnProps) {
   const openAddTask = useBoolean();
+  const fullBoardQuery = useGetBoardApi(projectId, undefined, {
+    query: { staleTime: 15_000, refetchOnWindowFocus: false },
+  });
 
   const { attributes, isDragging, listeners, setNodeRef, transition, active, over, transform } =
     useSortable({
@@ -80,16 +76,47 @@ export function KanbanColumn({
     }
   }, [column, projectId]);
 
-  const handleDeleteColumn = useCallback(async () => {
-    try {
-      await deleteColumn(projectId, column);
+  const handleArchiveColumn = useCallback(
+    async (destinationColumnId?: string, allowIncompleteChecklist = false) => {
+      try {
+        await archiveColumn(projectId, column, destinationColumnId, allowIncompleteChecklist);
 
-      toast.success('Delete success!', { position: 'top-center' });
-    } catch (error) {
-      console.error(error);
-      toast.error('Could not delete column. Try again.', { position: 'top-center' });
-    }
-  }, [column, projectId]);
+        toast.success('Column archived', { position: 'top-center' });
+      } catch (error) {
+        console.error(error);
+        toast.error('Could not archive column. Try again.', { position: 'top-center' });
+      }
+    },
+    [column, projectId]
+  );
+
+  const handleUpdateWip = useCallback(
+    async (wipLimit: number | null) => {
+      try {
+        await updateColumn(projectId, column, { wipLimit });
+        toast.success('WIP limit updated', { position: 'top-center' });
+      } catch (error) {
+        console.error(error);
+        toast.error('Could not update WIP limit. Try again.', { position: 'top-center' });
+      }
+    },
+    [column, projectId]
+  );
+
+  const archiveOptions =
+    fullBoardQuery.data?.columns
+      .filter((item) => item.id !== column.id)
+      .map((item) => ({ id: item.id, name: item.name, category: item.category })) ?? [];
+  const affectedTasks =
+    fullBoardQuery.data?.issues.filter((issue) => issue.columnId === String(column.id)) ?? tasks;
+  const incompleteChecklistCount = affectedTasks.reduce(
+    (total, task) =>
+      total +
+      (task.checklistIncompleteCount ??
+        (task.checklist ?? []).filter((item) => !item.isCompleted).length),
+    0
+  );
+  const totalPoints = tasks.reduce((total, task) => total + (task.storyPoints ?? 0), 0);
 
   const handleAddTask = useCallback(
     async (taskData: IKanbanTask) => {
@@ -123,11 +150,16 @@ export function KanbanColumn({
           <KanbanColumnToolBar
             handleProps={{ ...attributes, ...listeners }}
             totalTasks={tasks.length}
+            totalPoints={totalPoints}
             columnName={column.name}
+            category={column.category}
+            wipLimit={column.wipLimit}
+            archiveOptions={archiveOptions}
+            incompleteChecklistCount={incompleteChecklistCount}
             onUpdateColumn={handleUpdateColumn}
+            onUpdateWip={handleUpdateWip}
             onClearColumn={handleClearColumn}
-            onDeleteColumn={handleDeleteColumn}
-            deleteDisabled={scrumMode}
+            onArchiveColumn={handleArchiveColumn}
             onToggleAddTask={openAddTask.onToggle}
           />
         ),

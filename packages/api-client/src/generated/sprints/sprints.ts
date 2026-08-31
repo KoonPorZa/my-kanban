@@ -22,6 +22,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BulkSprintIssuesDto,
   CompleteSprintDto,
   CreateIssueDto,
   CreateSprintDto,
@@ -326,6 +327,93 @@ export const useAddIssueToSprint = <TError = ErrorType<unknown>, TContext = unkn
   TContext
 > => {
   const mutationOptions = getAddIssueToSprintMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Assign multiple tasks to a Sprint atomically
+ */
+export const bulkAddIssuesToSprint = (
+  sprintId: string,
+  bulkSprintIssuesDto: BulkSprintIssuesDto,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<SprintResponseDto>(
+    {
+      url: `/api/v1/sprints/${sprintId}/issues/bulk`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: bulkSprintIssuesDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getBulkAddIssuesToSprintMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkAddIssuesToSprint>>,
+    TError,
+    { sprintId: string; data: BulkSprintIssuesDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkAddIssuesToSprint>>,
+  TError,
+  { sprintId: string; data: BulkSprintIssuesDto },
+  TContext
+> => {
+  const mutationKey = ['bulkAddIssuesToSprint'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkAddIssuesToSprint>>,
+    { sprintId: string; data: BulkSprintIssuesDto }
+  > = (props) => {
+    const { sprintId, data } = props ?? {};
+
+    return bulkAddIssuesToSprint(sprintId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BulkAddIssuesToSprintMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkAddIssuesToSprint>>
+>;
+export type BulkAddIssuesToSprintMutationBody = BulkSprintIssuesDto;
+export type BulkAddIssuesToSprintMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Assign multiple tasks to a Sprint atomically
+ */
+export const useBulkAddIssuesToSprint = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bulkAddIssuesToSprint>>,
+      TError,
+      { sprintId: string; data: BulkSprintIssuesDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof bulkAddIssuesToSprint>>,
+  TError,
+  { sprintId: string; data: BulkSprintIssuesDto },
+  TContext
+> => {
+  const mutationOptions = getBulkAddIssuesToSprintMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

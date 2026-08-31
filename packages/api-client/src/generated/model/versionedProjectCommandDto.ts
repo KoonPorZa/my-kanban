@@ -5,10 +5,8 @@
  * Private API for the personal Kanban and Scrum board
  * OpenAPI spec version: 1.0
  */
-import type { UpdateProjectModeDtoMode } from './updateProjectModeDtoMode';
 
-export interface UpdateProjectModeDto {
-  mode: UpdateProjectModeDtoMode;
+export interface VersionedProjectCommandDto {
   /** @minimum 1 */
   version: number;
 }

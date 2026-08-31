@@ -61,5 +61,14 @@ jobs:
       - name: Test
         run: corepack pnpm test
 
+      - name: Check Phase 3 authored-state coverage
+        run: corepack pnpm --filter @my-kanban/web test:coverage
+
+      - name: Install Playwright Chromium
+        run: corepack pnpm --filter @my-kanban/web exec playwright install --with-deps chromium
+
+      - name: Run deterministic browser quality tests
+        run: corepack pnpm --filter @my-kanban/web test:e2e
+
       - name: Build
         run: corepack pnpm build

@@ -10,6 +10,7 @@ import {
   MoveColumnDto,
   CreateColumnDto,
   UpdateColumnDto,
+  ArchiveColumnDto,
   VersionedColumnCommandDto,
 } from './dto/column-mutation.dto';
 
@@ -74,13 +75,13 @@ export class BoardsController {
   }
 
   @Post('columns/:columnId/archive')
-  @ApiOperation({ operationId: 'archiveColumn', summary: 'Archive a board column and its tasks' })
+  @ApiOperation({ operationId: 'archiveColumn', summary: 'Archive a board column' })
   @ApiOkResponse({ type: BoardColumnResponseDto })
   archiveColumn(
     @CurrentUser() user: SessionPrincipal,
     @Param('columnId') columnId: string,
-    @Body() input: VersionedColumnCommandDto
+    @Body() input: ArchiveColumnDto
   ) {
-    return this.boards.archiveColumn(user.userId, columnId, input.version);
+    return this.boards.archiveColumn(user.userId, columnId, input);
   }
 }

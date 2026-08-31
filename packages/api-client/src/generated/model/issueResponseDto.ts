@@ -7,6 +7,7 @@
  */
 import type { IssueResponseDtoType } from './issueResponseDtoType';
 import type { IssueResponseDtoPriority } from './issueResponseDtoPriority';
+import type { ChecklistItemResponseDto } from './checklistItemResponseDto';
 
 export interface IssueResponseDto {
   id: string;
@@ -30,6 +31,9 @@ export interface IssueResponseDto {
   isBlocked: boolean;
   /** @nullable */
   blockedReason: string | null;
+  checklist: ChecklistItemResponseDto[];
+  /** @minimum 0 */
+  checklistIncompleteCount: number;
   /** @nullable */
   completedAt: string | null;
   version: number;

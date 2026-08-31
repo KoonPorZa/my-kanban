@@ -161,6 +161,53 @@ describe('Sprint persistence integration', () => {
     expect(await prisma.issue.count({ where: { sprintId: sprint.id } })).toBe(1);
   });
 
+  it('assigns selected backlog tasks to a Sprint atomically', async () => {
+    const owner = await createFixture('bulk-assignment');
+    const outsider = await createFixture('bulk-assignment-outsider');
+    const sprint = await sprints.create(owner.userId, owner.projectId, {
+      name: 'Bulk Sprint',
+      goal: '',
+      startDate: '2026-10-15',
+      endDate: '2026-10-28',
+    });
+    const first = await createIssue(owner, 'First selected', owner.todoColumnId, 2, 1024n);
+    const second = await createIssue(owner, 'Second selected', owner.todoColumnId, 3, 2048n);
+    const foreign = await createIssue(outsider, 'Foreign task', outsider.todoColumnId, 5, 1024n);
+    const otherSprint = await sprints.create(owner.userId, owner.projectId, {
+      name: 'Other Sprint',
+      goal: '',
+      startDate: '2026-10-29',
+      endDate: '2026-11-11',
+    });
+    await sprints.addIssue(owner.userId, otherSprint.id, second.id);
+
+    await expect(
+      sprints.bulkAddIssues(owner.userId, sprint.id, [first.id, foreign.id])
+    ).rejects.toBeInstanceOf(ResourceNotFoundError);
+    expect(await prisma.issue.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+      sprintId: null,
+    });
+
+    await expect(
+      sprints.bulkAddIssues(owner.userId, sprint.id, [first.id, second.id])
+    ).rejects.toBeInstanceOf(DomainConflictError);
+    await expect(
+      prisma.issue.findUniqueOrThrow({ where: { id: first.id } })
+    ).resolves.toMatchObject({ sprintId: null });
+    await expect(
+      prisma.issue.findUniqueOrThrow({ where: { id: second.id } })
+    ).resolves.toMatchObject({ sprintId: otherSprint.id });
+
+    const third = await createIssue(owner, 'Third selected', owner.todoColumnId, 1, 3072n);
+    const updated = await sprints.bulkAddIssues(owner.userId, sprint.id, [first.id, third.id]);
+    expect(updated.issueCount).toBe(2);
+    expect(
+      await prisma.issue.count({
+        where: { id: { in: [first.id, third.id] }, sprintId: sprint.id },
+      })
+    ).toBe(2);
+  });
+
   it('rejects a cross-Project Sprint assignment at the database boundary', async () => {
     const first = await createFixture('database-project-integrity-a');
     const second = await createFixture('database-project-integrity-b');

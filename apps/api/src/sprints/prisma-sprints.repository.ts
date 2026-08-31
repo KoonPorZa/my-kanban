@@ -56,6 +56,10 @@ const issueSelect = {
   dueDate: true,
   isBlocked: true,
   blockedReason: true,
+  checklist: {
+    select: { id: true, title: true, isCompleted: true },
+    orderBy: { rank: 'asc' },
+  },
   completedAt: true,
   version: true,
   createdAt: true,
@@ -137,6 +141,40 @@ export class PrismaSprintsRepository extends SprintsRepository {
     });
   }
 
+  async bulkAddIssues(ownerId: string, sprintId: string, issueIds: string[]) {
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockSprintProject(transaction, ownerId, sprintId);
+      const sprint = await this.requireMutableSprint(transaction, ownerId, sprintId);
+      const tasks = await transaction.issue.findMany({
+        where: {
+          id: { in: issueIds },
+          projectId: sprint.projectId,
+          archivedAt: null,
+          project: { archivedAt: null, workspace: { ownerId } },
+        },
+        select: { id: true, sprintId: true },
+      });
+      if (tasks.length !== issueIds.length) throw new ResourceNotFoundError('Task');
+      if (tasks.some((task) => task.sprintId !== null)) {
+        throw new DomainConflictError('Only backlog tasks can be assigned to a Sprint');
+      }
+
+      const assigned = await transaction.issue.updateMany({
+        where: {
+          id: { in: issueIds },
+          projectId: sprint.projectId,
+          sprintId: null,
+          archivedAt: null,
+        },
+        data: { sprintId: sprint.id, version: { increment: 1 } },
+      });
+      if (assigned.count !== issueIds.length) {
+        throw new DomainConflictError('A selected task is no longer in backlog');
+      }
+      return this.getSprint(transaction, sprint.id);
+    });
+  }
+
   async createIssue(ownerId: string, sprintId: string, input: CreateIssueDto) {
     return this.prisma.$transaction(async (transaction) => {
       await this.lockSprintProject(transaction, ownerId, sprintId);
@@ -176,6 +214,16 @@ export class PrismaSprintsRepository extends SprintsRepository {
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           isBlocked: input.isBlocked ?? false,
           blockedReason: input.blockedReason?.trim() || null,
+          checklist: input.checklist?.length
+            ? {
+                create: input.checklist.map((item, index) => ({
+                  ...(item.id && { id: item.id }),
+                  title: item.title,
+                  isCompleted: item.isCompleted ?? false,
+                  rank: BigInt((index + 1) * 1024),
+                })),
+              }
+            : undefined,
           completedAt: column.category === 'done' ? new Date() : null,
           rank,
         },
@@ -422,6 +470,7 @@ export class PrismaSprintsRepository extends SprintsRepository {
   private toIssueDto(issue: SelectedIssue) {
     return {
       ...issue,
+      checklistIncompleteCount: issue.checklist.filter((item) => !item.isCompleted).length,
       dueDate: issue.dueDate?.toISOString() ?? null,
       completedAt: issue.completedAt?.toISOString() ?? null,
       createdAt: issue.createdAt.toISOString(),

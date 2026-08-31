@@ -15,8 +15,10 @@ import type {
 
 import type {
   CreateIssueDto,
+  DuplicateIssueDto,
   IssueResponseDto,
   MoveIssueDto,
+  RestoreIssueDto,
   UpdateIssueDto,
   VersionedIssueCommandDto,
 } from '.././model';
@@ -361,6 +363,176 @@ export const useArchiveIssue = <TError = ErrorType<unknown>, TContext = unknown>
   TContext
 > => {
   const mutationOptions = getArchiveIssueMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Duplicate a task and its checklist
+ */
+export const duplicateIssue = (
+  issueId: string,
+  duplicateIssueDto: DuplicateIssueDto,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<IssueResponseDto>(
+    {
+      url: `/api/v1/issues/${issueId}/duplicate`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: duplicateIssueDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getDuplicateIssueMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicateIssue>>,
+    TError,
+    { issueId: string; data: DuplicateIssueDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof duplicateIssue>>,
+  TError,
+  { issueId: string; data: DuplicateIssueDto },
+  TContext
+> => {
+  const mutationKey = ['duplicateIssue'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof duplicateIssue>>,
+    { issueId: string; data: DuplicateIssueDto }
+  > = (props) => {
+    const { issueId, data } = props ?? {};
+
+    return duplicateIssue(issueId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DuplicateIssueMutationResult = NonNullable<Awaited<ReturnType<typeof duplicateIssue>>>;
+export type DuplicateIssueMutationBody = DuplicateIssueDto;
+export type DuplicateIssueMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Duplicate a task and its checklist
+ */
+export const useDuplicateIssue = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof duplicateIssue>>,
+      TError,
+      { issueId: string; data: DuplicateIssueDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof duplicateIssue>>,
+  TError,
+  { issueId: string; data: DuplicateIssueDto },
+  TContext
+> => {
+  const mutationOptions = getDuplicateIssueMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Restore an archived task
+ */
+export const restoreIssue = (
+  issueId: string,
+  restoreIssueDto: RestoreIssueDto,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<IssueResponseDto>(
+    {
+      url: `/api/v1/issues/${issueId}/restore`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: restoreIssueDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getRestoreIssueMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreIssue>>,
+    TError,
+    { issueId: string; data: RestoreIssueDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreIssue>>,
+  TError,
+  { issueId: string; data: RestoreIssueDto },
+  TContext
+> => {
+  const mutationKey = ['restoreIssue'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreIssue>>,
+    { issueId: string; data: RestoreIssueDto }
+  > = (props) => {
+    const { issueId, data } = props ?? {};
+
+    return restoreIssue(issueId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreIssueMutationResult = NonNullable<Awaited<ReturnType<typeof restoreIssue>>>;
+export type RestoreIssueMutationBody = RestoreIssueDto;
+export type RestoreIssueMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Restore an archived task
+ */
+export const useRestoreIssue = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof restoreIssue>>,
+      TError,
+      { issueId: string; data: RestoreIssueDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof restoreIssue>>,
+  TError,
+  { issueId: string; data: RestoreIssueDto },
+  TContext
+> => {
+  const mutationOptions = getRestoreIssueMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

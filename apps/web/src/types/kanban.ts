@@ -28,12 +28,21 @@ export type IKanbanAssignee = {
 export type IKanbanTask = {
   name: string;
   status: string;
-  priority: string;
+  type: 'task' | 'story' | 'bug' | 'chore';
+  priority: 'urgent' | 'high' | 'medium' | 'low' | 'none';
   labels: string[];
   id: UniqueIdentifier;
   version: number;
   sprintId: string | null;
   storyPoints: number | null;
+  dueDate: string | null;
+  isBlocked: boolean;
+  blockedReason: string | null;
+  checklist?: { id: string; title: string; isCompleted: boolean }[];
+  checklistIncompleteCount?: number;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   description?: string;
   attachments: string[];
   comments: IKanbanComment[];
@@ -60,4 +69,5 @@ export type IKanban = {
   projectName: string;
   columns: IKanbanColumn[];
   tasks: Record<UniqueIdentifier, IKanbanTask[]>;
+  skippedIssueCount: number;
 };

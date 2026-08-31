@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban and Scrum Board Product Requirements
-version: 1.6
+version: 1.7
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -514,8 +514,11 @@ MVP พร้อมใช้งานเมื่อ acceptance criteria ต่�
   screen reader smoke test
 - **Performance tests**: สร้าง fixture 2,000 Issue แล้ววัด Board render, search,
   filter และ drag response
-- **Coverage requirement**: Domain logic และ persistence layer ต้องมี branch
-  coverage อย่างน้อย 90%; โค้ดทั้งหมดต้องมี line coverage อย่างน้อย 80%
+- **Coverage requirement**: MVP state/domain modules ที่เขียนเพิ่มให้ผลิตภัณฑ์ต้องมี line
+  coverage อย่างน้อย 80% และต้องประกาศ coverage scope ชัดเจนใน CI; generated code,
+  upstream Minimal starter surface ที่ไม่ได้อยู่ใน product route และ visual-only component
+  composition ไม่รวมในตัวหาร ส่วน persistence invariants ต้องมี PostgreSQL integration test
+  ครอบคลุม success, conflict และ rollback path ที่เสี่ยงต่อ data loss
 - **CI requirement**: ทุก change ต้องผ่าน lint, typecheck, unit, integration และ
   production build ก่อน merge
 

@@ -21,7 +21,13 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ProjectListResponseDto, ProjectSummaryDto, UpdateProjectModeDto } from '.././model';
+import type {
+  CreateProjectDto,
+  ProjectListResponseDto,
+  ProjectSummaryDto,
+  UpdateProjectDto,
+  VersionedProjectCommandDto,
+} from '.././model';
 
 import { apiClient } from '../../http-client';
 import type { ErrorType } from '../../http-client';
@@ -138,11 +144,95 @@ export function useListProjects<
 }
 
 /**
- * @summary Change the project workflow mode
+ * @summary Create and activate a project
+ */
+export const createProject = (
+  createProjectDto: CreateProjectDto,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<ProjectSummaryDto>(
+    {
+      url: `/api/v1/projects`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: createProjectDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getCreateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProject>>,
+    TError,
+    { data: CreateProjectDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: CreateProjectDto },
+  TContext
+> => {
+  const mutationKey = ['createProject'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProject>>,
+    { data: CreateProjectDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectMutationResult = NonNullable<Awaited<ReturnType<typeof createProject>>>;
+export type CreateProjectMutationBody = CreateProjectDto;
+export type CreateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create and activate a project
+ */
+export const useCreateProject = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createProject>>,
+      TError,
+      { data: CreateProjectDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: CreateProjectDto },
+  TContext
+> => {
+  const mutationOptions = getCreateProjectMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Update a project
  */
 export const updateProject = (
   projectId: string,
-  updateProjectModeDto: UpdateProjectModeDto,
+  updateProjectDto: UpdateProjectDto,
   options?: SecondParameter<typeof apiClient>
 ) => {
   return apiClient<ProjectSummaryDto>(
@@ -150,7 +240,7 @@ export const updateProject = (
       url: `/api/v1/projects/${projectId}`,
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      data: updateProjectModeDto,
+      data: updateProjectDto,
     },
     options
   );
@@ -163,14 +253,14 @@ export const getUpdateProjectMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateProject>>,
     TError,
-    { projectId: string; data: UpdateProjectModeDto },
+    { projectId: string; data: UpdateProjectDto },
     TContext
   >;
   request?: SecondParameter<typeof apiClient>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof updateProject>>,
   TError,
-  { projectId: string; data: UpdateProjectModeDto },
+  { projectId: string; data: UpdateProjectDto },
   TContext
 > => {
   const mutationKey = ['updateProject'];
@@ -182,7 +272,7 @@ export const getUpdateProjectMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateProject>>,
-    { projectId: string; data: UpdateProjectModeDto }
+    { projectId: string; data: UpdateProjectDto }
   > = (props) => {
     const { projectId, data } = props ?? {};
 
@@ -193,18 +283,18 @@ export const getUpdateProjectMutationOptions = <
 };
 
 export type UpdateProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateProject>>>;
-export type UpdateProjectMutationBody = UpdateProjectModeDto;
+export type UpdateProjectMutationBody = UpdateProjectDto;
 export type UpdateProjectMutationError = ErrorType<unknown>;
 
 /**
- * @summary Change the project workflow mode
+ * @summary Update a project
  */
 export const useUpdateProject = <TError = ErrorType<unknown>, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateProject>>,
       TError,
-      { projectId: string; data: UpdateProjectModeDto },
+      { projectId: string; data: UpdateProjectDto },
       TContext
     >;
     request?: SecondParameter<typeof apiClient>;
@@ -213,10 +303,175 @@ export const useUpdateProject = <TError = ErrorType<unknown>, TContext = unknown
 ): UseMutationResult<
   Awaited<ReturnType<typeof updateProject>>,
   TError,
-  { projectId: string; data: UpdateProjectModeDto },
+  { projectId: string; data: UpdateProjectDto },
   TContext
 > => {
   const mutationOptions = getUpdateProjectMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Make a project active
+ */
+export const activateProject = (
+  projectId: string,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<ProjectSummaryDto>(
+    { url: `/api/v1/projects/${projectId}/activate`, method: 'POST', signal },
+    options
+  );
+};
+
+export const getActivateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateProject>>,
+    TError,
+    { projectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof activateProject>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  const mutationKey = ['activateProject'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof activateProject>>,
+    { projectId: string }
+  > = (props) => {
+    const { projectId } = props ?? {};
+
+    return activateProject(projectId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActivateProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof activateProject>>
+>;
+
+export type ActivateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Make a project active
+ */
+export const useActivateProject = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof activateProject>>,
+      TError,
+      { projectId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof activateProject>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  const mutationOptions = getActivateProjectMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Archive a project
+ */
+export const archiveProject = (
+  projectId: string,
+  versionedProjectCommandDto: VersionedProjectCommandDto,
+  options?: SecondParameter<typeof apiClient>,
+  signal?: AbortSignal
+) => {
+  return apiClient<ProjectListResponseDto>(
+    {
+      url: `/api/v1/projects/${projectId}/archive`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: versionedProjectCommandDto,
+      signal,
+    },
+    options
+  );
+};
+
+export const getArchiveProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof archiveProject>>,
+    TError,
+    { projectId: string; data: VersionedProjectCommandDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof archiveProject>>,
+  TError,
+  { projectId: string; data: VersionedProjectCommandDto },
+  TContext
+> => {
+  const mutationKey = ['archiveProject'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof archiveProject>>,
+    { projectId: string; data: VersionedProjectCommandDto }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return archiveProject(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ArchiveProjectMutationResult = NonNullable<Awaited<ReturnType<typeof archiveProject>>>;
+export type ArchiveProjectMutationBody = VersionedProjectCommandDto;
+export type ArchiveProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Archive a project
+ */
+export const useArchiveProject = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof archiveProject>>,
+      TError,
+      { projectId: string; data: VersionedProjectCommandDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof archiveProject>>,
+  TError,
+  { projectId: string; data: VersionedProjectCommandDto },
+  TContext
+> => {
+  const mutationOptions = getArchiveProjectMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

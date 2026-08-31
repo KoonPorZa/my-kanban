@@ -1,4 +1,5 @@
 import type { BoxProps } from '@mui/material/Box';
+import type { IKanbanTask } from 'src/types/kanban';
 
 import { varAlpha } from 'minimal-shared/utils';
 
@@ -10,8 +11,8 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 type Props = BoxProps & {
-  priority: string;
-  onChangePriority: (newValue: string) => void;
+  priority: IKanbanTask['priority'];
+  onChangePriority: (newValue: IKanbanTask['priority']) => void;
 };
 
 export function KanbanDetailsPriority({ priority, onChangePriority, sx, ...other }: Props) {
@@ -23,7 +24,7 @@ export function KanbanDetailsPriority({ priority, onChangePriority, sx, ...other
       ]}
       {...other}
     >
-      {['low', 'medium', 'hight'].map((option) => (
+      {(['urgent', 'high', 'medium', 'low', 'none'] as const).map((option) => (
         <ButtonBase
           key={option}
           onClick={() => onChangePriority(option)}
@@ -31,6 +32,8 @@ export function KanbanDetailsPriority({ priority, onChangePriority, sx, ...other
             py: 0.5,
             pl: 0.75,
             pr: 1.25,
+            minWidth: 44,
+            minHeight: 44,
             fontSize: 12,
             borderRadius: 1,
             lineHeight: '20px',
@@ -52,7 +55,7 @@ export function KanbanDetailsPriority({ priority, onChangePriority, sx, ...other
               mr: 0.5,
               ...(option === 'low' && { color: 'info.main' }),
               ...(option === 'medium' && { color: 'warning.main' }),
-              ...(option === 'hight' && { color: 'error.main' }),
+              ...(['urgent', 'high'].includes(option) && { color: 'error.main' }),
             }}
           />
 

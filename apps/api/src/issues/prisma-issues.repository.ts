@@ -27,6 +27,10 @@ const issueSelect = {
   dueDate: true,
   isBlocked: true,
   blockedReason: true,
+  checklist: {
+    select: { id: true, title: true, isCompleted: true },
+    orderBy: { rank: 'asc' },
+  },
   completedAt: true,
   version: true,
   createdAt: true,
@@ -116,44 +120,42 @@ export class PrismaIssuesRepository extends IssuesRepository {
   ) {
     return this.prisma.$transaction(async (transaction) => {
       await this.lockIssueProject(transaction, projectId, issueId);
-      const issue = await transaction.issue.findFirst({
-        where: { id: issueId, projectId, archivedAt: { not: null }, project: { archivedAt: null } },
-      });
-      if (!issue) throw new ResourceNotFoundError('Task');
-      if (issue.version !== version) throw new VersionConflictError('Task');
-
-      const column = await transaction.boardColumn.findFirst({
-        where: {
-          id: targetColumnId ?? issue.columnId,
-          projectId,
-          archivedAt: null,
-          project: { archivedAt: null },
-        },
-        select: { id: true, category: true },
-      });
-      if (!column) throw new ResourceNotFoundError('Column');
-
-      const rank = await this.resolveRank(
+      return this.restoreWithTransaction(
         transaction,
-        column.id,
-        undefined,
+        projectId,
+        issueId,
+        version,
+        targetColumnId,
         beforeIssueId,
         afterIssueId
       );
-      const result = await transaction.issue.updateMany({
-        where: { id: issue.id, projectId, version, archivedAt: { not: null } },
-        data: {
-          columnId: column.id,
-          rank,
-          archivedAt: null,
-          completedAt: column.category === 'done' ? (issue.completedAt ?? new Date()) : null,
-          version: { increment: 1 },
-        },
-      });
-      if (result.count !== 1) throw new VersionConflictError('Task');
+    });
+  }
 
-      return this.toDto(
-        await transaction.issue.findUniqueOrThrow({ where: { id: issue.id }, select: issueSelect })
+  async restore(
+    ownerId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string,
+    beforeIssueId?: string,
+    afterIssueId?: string
+  ) {
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedIssueProject(transaction, ownerId, issueId);
+      const issue = await transaction.issue.findFirst({
+        where: { id: issueId, project: { archivedAt: null, workspace: { ownerId } } },
+        select: { projectId: true },
+      });
+      if (!issue) throw new ResourceNotFoundError('Task');
+      return this.restoreWithTransaction(
+        transaction,
+        issue.projectId,
+        issueId,
+        version,
+        targetColumnId,
+        beforeIssueId,
+        afterIssueId,
+        ownerId
       );
     });
   }
@@ -195,6 +197,16 @@ export class PrismaIssuesRepository extends IssuesRepository {
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         isBlocked: input.isBlocked ?? false,
         blockedReason: input.blockedReason?.trim() || null,
+        checklist: input.checklist?.length
+          ? {
+              create: input.checklist.map((item, index) => ({
+                ...(item.id && { id: item.id }),
+                title: item.title,
+                isCompleted: item.isCompleted ?? false,
+                rank: BigInt((index + 1) * 1024),
+              })),
+            }
+          : undefined,
         completedAt: column.category === 'done' ? new Date() : null,
         rank,
       },
@@ -230,6 +242,10 @@ export class PrismaIssuesRepository extends IssuesRepository {
       });
       if (result.count !== 1) throw new VersionConflictError('Task');
 
+      if (changes.checklist !== undefined) {
+        await this.replaceChecklist(transaction, issueId, changes.checklist);
+      }
+
       return this.toDto(
         await transaction.issue.findUniqueOrThrow({ where: { id: issueId }, select: issueSelect })
       );
@@ -260,6 +276,21 @@ export class PrismaIssuesRepository extends IssuesRepository {
         select: { id: true, category: true },
       });
       if (!targetColumn) throw new ResourceNotFoundError('Column');
+
+      if (
+        targetColumn.category === 'done' &&
+        issue.completedAt === null &&
+        !input.allowIncompleteChecklist
+      ) {
+        const incompleteCount = await transaction.checklistItem.count({
+          where: { issueId: issue.id, isCompleted: false },
+        });
+        if (incompleteCount > 0) {
+          throw new DomainValidationError(
+            `Task has ${incompleteCount} incomplete checklist item(s); confirm the move with allowIncompleteChecklist`
+          );
+        }
+      }
 
       const rank = await this.resolveRank(
         transaction,
@@ -300,6 +331,160 @@ export class PrismaIssuesRepository extends IssuesRepository {
         await transaction.issue.findUniqueOrThrow({ where: { id: issueId }, select: issueSelect })
       );
     });
+  }
+
+  async duplicate(ownerId: string, issueId: string, version: number, targetColumnId?: string) {
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockOwnedIssueProject(transaction, ownerId, issueId);
+      const source = await transaction.issue.findFirst({
+        where: {
+          id: issueId,
+          archivedAt: null,
+          project: { archivedAt: null, workspace: { ownerId } },
+        },
+        include: { checklist: { orderBy: { rank: 'asc' } } },
+      });
+      if (!source) throw new ResourceNotFoundError('Task');
+      if (source.version !== version) throw new VersionConflictError('Task');
+
+      const column = await transaction.boardColumn.findFirst({
+        where: {
+          id: targetColumnId ?? source.columnId,
+          projectId: source.projectId,
+          archivedAt: null,
+        },
+        select: { id: true, category: true },
+      });
+      if (!column) throw new ResourceNotFoundError('Column');
+      const rank = await this.resolveRank(transaction, column.id);
+      const title = `${source.title.slice(0, 193).trimEnd()} (copy)`;
+      const duplicate = await transaction.issue.create({
+        data: {
+          projectId: source.projectId,
+          sprintId: source.sprintId,
+          columnId: column.id,
+          title,
+          description: source.description,
+          type: source.type,
+          priority: source.priority,
+          labels: source.labels,
+          storyPoints: source.storyPoints,
+          dueDate: source.dueDate,
+          isBlocked: source.isBlocked,
+          blockedReason: source.blockedReason,
+          completedAt: column.category === 'done' ? new Date() : null,
+          rank,
+          checklist: source.checklist.length
+            ? {
+                create: source.checklist.map((item, index) => ({
+                  title: item.title,
+                  isCompleted: item.isCompleted,
+                  rank: BigInt((index + 1) * 1024),
+                })),
+              }
+            : undefined,
+        },
+        select: issueSelect,
+      });
+      return this.toDto(duplicate);
+    });
+  }
+
+  private async replaceChecklist(
+    transaction: Prisma.TransactionClient,
+    issueId: string,
+    checklist: NonNullable<UpdateIssueDto['checklist']>
+  ) {
+    const suppliedIds = checklist.flatMap(({ id }) => (id ? [id] : []));
+    if (suppliedIds.length) {
+      const collidingItems = await transaction.checklistItem.count({
+        where: { issueId: { not: issueId }, id: { in: suppliedIds } },
+      });
+      if (collidingItems > 0) {
+        throw new DomainValidationError('Checklist contains an item that does not belong to task');
+      }
+    }
+
+    await transaction.checklistItem.deleteMany({ where: { issueId } });
+    for (const [index, item] of checklist.entries()) {
+      await transaction.checklistItem.create({
+        data: {
+          ...(item.id && { id: item.id }),
+          issueId,
+          title: item.title,
+          isCompleted: item.isCompleted ?? false,
+          rank: BigInt((index + 1) * 1024),
+        },
+      });
+    }
+  }
+
+  private async restoreWithTransaction(
+    transaction: Prisma.TransactionClient,
+    projectId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string,
+    beforeIssueId?: string,
+    afterIssueId?: string,
+    ownerId?: string
+  ) {
+    const issue = await transaction.issue.findFirst({
+      where: {
+        id: issueId,
+        projectId,
+        archivedAt: { not: null },
+        project: { archivedAt: null, ...(ownerId && { workspace: { ownerId } }) },
+      },
+    });
+    if (!issue) throw new ResourceNotFoundError('Task');
+    if (issue.version !== version) throw new VersionConflictError('Task');
+
+    let column = await transaction.boardColumn.findFirst({
+      where: {
+        id: targetColumnId ?? issue.columnId,
+        projectId,
+        archivedAt: null,
+        project: { archivedAt: null, ...(ownerId && { workspace: { ownerId } }) },
+      },
+      select: { id: true, category: true },
+    });
+    if (!column && targetColumnId === undefined) {
+      column = await transaction.boardColumn.findFirst({
+        where: {
+          projectId,
+          archivedAt: null,
+          project: { archivedAt: null, ...(ownerId && { workspace: { ownerId } }) },
+        },
+        orderBy: { rank: 'asc' },
+        select: { id: true, category: true },
+      });
+    }
+    if (!column) throw new ResourceNotFoundError('Column');
+
+    const preserveOriginalPosition =
+      column.id === issue.columnId &&
+      targetColumnId === undefined &&
+      beforeIssueId === undefined &&
+      afterIssueId === undefined;
+    const rank = preserveOriginalPosition
+      ? issue.rank
+      : await this.resolveRank(transaction, column.id, undefined, beforeIssueId, afterIssueId);
+    const result = await transaction.issue.updateMany({
+      where: { id: issue.id, projectId, version, archivedAt: { not: null } },
+      data: {
+        columnId: column.id,
+        rank,
+        archivedAt: null,
+        completedAt: column.category === 'done' ? (issue.completedAt ?? new Date()) : null,
+        version: { increment: 1 },
+      },
+    });
+    if (result.count !== 1) throw new VersionConflictError('Task');
+
+    return this.toDto(
+      await transaction.issue.findUniqueOrThrow({ where: { id: issue.id }, select: issueSelect })
+    );
   }
 
   private async lockOwnedIssueProject(
@@ -420,6 +605,7 @@ export class PrismaIssuesRepository extends IssuesRepository {
   private toDto(issue: SelectedIssue) {
     return {
       ...issue,
+      checklistIncompleteCount: issue.checklist.filter((item) => !item.isCompleted).length,
       dueDate: issue.dueDate?.toISOString() ?? null,
       completedAt: issue.completedAt?.toISOString() ?? null,
       createdAt: issue.createdAt.toISOString(),
