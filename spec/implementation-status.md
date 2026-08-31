@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.10
+version: 1.11
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -135,7 +135,7 @@ Foundation มี evidence ล่าสุดดังนี้
 | `corepack pnpm railway:validate`  | Passed                               |
 | `corepack pnpm typecheck`         | Passed                               |
 | `corepack pnpm lint`              | Passed                               |
-| `corepack pnpm test`              | Passed; API 23, Web 3, CLI 4 tests   |
+| `corepack pnpm test`              | Passed; API 23, Web 4, CLI 4 tests   |
 | `corepack pnpm build`             | Passed for Web, API, client, and CLI |
 | `corepack pnpm api:generate`      | Passed; deterministic output         |
 | `corepack pnpm format:check`      | Passed                               |
@@ -182,7 +182,8 @@ Railway plan ปัจจุบันไม่รองรับ volume backup/P
 
 ## 8. Next steps
 
-ปิด authenticated Board archive/reload checklist ใน `production-closeout.md` จากนั้น
-จึงเริ่ม Phase 2: Scrum MVP Cloudflare `Full` และ public bypass hardening ผ่านแล้ว
-Product Owner เลื่อน MCP mutation, revoke และ project-isolation acceptance ไว้ภายหลัง
-รายการนี้ยังไม่ผ่านและต้องทดสอบก่อนประกาศ MCP production-ready
+Pre-Phase-2 production gate ผ่านครบแล้ว Product Owner ยืนยัน authenticated Board
+create, edit, drag, archive และ reload persistence เมื่อ September 1, 2026 จึงเริ่ม
+Phase 2: Scrum MVP ได้ Cloudflare `Full` และ public bypass hardening ผ่านแล้ว Product
+Owner เลื่อน MCP mutation, revoke และ project-isolation acceptance ไว้ภายหลัง รายการนี้
+ยังไม่ผ่านและต้องทดสอบก่อนประกาศ MCP production-ready
