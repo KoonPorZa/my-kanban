@@ -16,7 +16,11 @@ import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export function KanbanColumnAdd({ sx, ...other }: BoxProps) {
+type Props = BoxProps & {
+  projectId: string;
+};
+
+export function KanbanColumnAdd({ projectId, sx, ...other }: Props) {
   const [columnName, setColumnName] = useState('');
 
   const openAddColumn = useBoolean();
@@ -27,9 +31,16 @@ export function KanbanColumnAdd({ sx, ...other }: BoxProps) {
 
   const handleCreateColumn = useCallback(async () => {
     try {
-      const columnData = { id: uuidv4(), name: columnName.trim() ? columnName : 'Untitled' };
+      const columnData = {
+        id: uuidv4(),
+        projectId,
+        version: 1,
+        category: 'todo' as const,
+        wipLimit: null,
+        name: columnName.trim() ? columnName : 'Untitled',
+      };
 
-      createColumn(columnData);
+      await createColumn(projectId, columnData);
 
       setColumnName('');
 
@@ -37,7 +48,7 @@ export function KanbanColumnAdd({ sx, ...other }: BoxProps) {
     } catch (error) {
       console.error(error);
     }
-  }, [columnName, openAddColumn]);
+  }, [columnName, openAddColumn, projectId]);
 
   const handleKeyUpCreateColumn = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {

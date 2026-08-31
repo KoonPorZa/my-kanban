@@ -4,7 +4,12 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import type { GoogleIdentity, SessionPrincipal } from './auth.types';
 
-const DEFAULT_COLUMNS = ['Backlog', 'To do', 'In progress', 'Done'] as const;
+const DEFAULT_COLUMNS = [
+  { name: 'Backlog', category: 'todo' },
+  { name: 'To do', category: 'todo' },
+  { name: 'In progress', category: 'in_progress' },
+  { name: 'Done', category: 'done' },
+] as const;
 
 @Injectable()
 export class AuthService {
@@ -73,10 +78,11 @@ export class AuthService {
           data: { workspaceId: workspace.id, name: 'My Kanban' },
         });
         await transaction.boardColumn.createMany({
-          data: DEFAULT_COLUMNS.map((name, index) => ({
+          data: DEFAULT_COLUMNS.map((column, index) => ({
             projectId: project.id,
-            name,
-            rank: BigInt((index + 1) * 1000),
+            name: column.name,
+            category: column.category,
+            rank: BigInt((index + 1) * 1024),
           })),
         });
         await transaction.workspace.update({

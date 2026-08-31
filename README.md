@@ -6,10 +6,10 @@ Prisma. The current foundation includes the adapted Kanban board from Minimal
 TypeScript v7, local database migrations, health endpoints, and production
 builds.
 
-> **Note:** This is a preview application under active development. The board
-> currently uses an in-browser TanStack Query adapter. Google login and
-> PostgreSQL-backed sessions are locally verified. Board API persistence is
-> next; Project-scoped Remote MCP access is specified but not implemented yet.
+> **Note:** This is a preview application under active development. Google
+> login, PostgreSQL-backed sessions, and owner-scoped Board API persistence are
+> locally verified. Project-scoped Remote MCP access is specified but not
+> implemented yet.
 
 ## Repository structure
 
@@ -91,6 +91,13 @@ corepack pnpm test
 corepack pnpm build
 ```
 
+Regenerate the OpenAPI artifact and Orval client after changing API DTOs or
+controllers.
+
+```sh
+corepack pnpm api:generate
+```
+
 The API exposes liveness at `/health/live`, readiness at `/health/ready`, and
 Swagger UI at `/api/docs`.
 
@@ -121,7 +128,6 @@ from Keychain for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-The next vertical slice adds shared Board application services, owner-scoped
-Project and Issue endpoints, API persistence, and the generated Orval client.
-The MCP adapter, Project-token UI, and helper CLI follow on top of those shared
-services.
+The next vertical slice adds the MCP token and audit schema, Streamable HTTP
+adapter, Project-token UI, Web proxy, and macOS helper CLI on top of the shared
+Board and Issue application services.

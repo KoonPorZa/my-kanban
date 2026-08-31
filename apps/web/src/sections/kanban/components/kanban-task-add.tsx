@@ -25,6 +25,7 @@ export function KanbanTaskAdd({ status, openAddTask, onAddTask, onCloseAddTask }
   const defaultTask: IKanbanTask = useMemo(
     () => ({
       id: uuidv4(),
+      version: 1,
       status,
       name: taskName.trim() ? taskName : 'Untitled',
       priority: 'medium',

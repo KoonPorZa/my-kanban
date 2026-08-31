@@ -31,6 +31,7 @@ export type IKanbanTask = {
   priority: string;
   labels: string[];
   id: UniqueIdentifier;
+  version: number;
   description?: string;
   attachments: string[];
   comments: IKanbanComment[];
@@ -46,9 +47,15 @@ export type IKanbanTask = {
 export type IKanbanColumn = {
   name: string;
   id: UniqueIdentifier;
+  projectId: string;
+  version: number;
+  category: 'todo' | 'in_progress' | 'done';
+  wipLimit: number | null;
 };
 
 export type IKanban = {
+  projectId: string;
+  projectName: string;
   columns: IKanbanColumn[];
   tasks: Record<UniqueIdentifier, IKanbanTask[]>;
 };

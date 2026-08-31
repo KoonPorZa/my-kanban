@@ -444,12 +444,11 @@ Runtime ต้อง pin ให้เหมือนกันระหว่า�
 
 ## 12. Next steps
 
-Repository foundation และ request path ถึง PostgreSQL พิสูจน์แล้ว ขั้นตอนต่อไปคือ
-เพิ่ม business modules และ MCP adapter โดยรักษา service boundary เดิม
+Repository foundation, Board application services และ request path ถึง PostgreSQL
+พิสูจน์แล้ว ขั้นตอนต่อไปคือเพิ่ม MCP adapter โดยรักษา service boundary เดิม
 
-1. เพิ่ม Project, Board และ Issue modules พร้อม owner scoping
-2. สร้าง OpenAPI artifact และ Orval client
-3. เชื่อม Kanban UI กับ API และเพิ่ม optimistic rollback
-4. เพิ่ม MCP token management, `McpModule` และ audit log
-5. เพิ่ม macOS helper CLI และ client smoke tests
-6. ตั้ง Railway services เมื่อผู้ใช้สั่ง deploy โดยตรง
+1. เพิ่ม MCP token, idempotency และ audit schema
+2. เพิ่ม `McpModule` และ Web `/mcp` proxy
+3. เพิ่ม Project-token management UI
+4. เพิ่ม macOS helper CLI และ client smoke tests
+5. ตั้ง Railway services เมื่อผู้ใช้สั่ง deploy โดยตรง

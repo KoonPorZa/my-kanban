@@ -20,7 +20,8 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:migrate": "pnpm --filter @my-kanban/api prisma:migrate",
-    "db:generate": "pnpm --filter @my-kanban/api prisma:generate"
+    "db:generate": "pnpm --filter @my-kanban/api prisma:generate",
+    "api:generate": "pnpm --filter @my-kanban/api openapi:generate && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @my-kanban/api-client generate"
   },
   "devDependencies": {
     "prettier": "^3.5.3"

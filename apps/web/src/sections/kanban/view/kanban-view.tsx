@@ -36,7 +36,7 @@ import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-import { moveTask, moveColumn, useGetBoard } from 'src/actions/kanban';
+import { moveColumn, useGetBoard, previewTaskMove, persistTaskMove } from 'src/actions/kanban';
 
 import { EmptyContent } from 'src/components/empty-content';
 
@@ -224,20 +224,30 @@ export function KanbanView() {
         ],
       };
 
-      moveTask(updateTasks);
+      previewTaskMove(board.projectId, updateTasks);
     }
   };
 
   /**
    * onDragEnd
    */
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
+  const onDragEnd = async ({ active, over }: DragEndEvent) => {
     if (active.id in board.tasks && over?.id) {
       const activeIndex = columnIds.indexOf(active.id);
       const overIndex = columnIds.indexOf(over.id);
       const updateColumns = arrayMove(board.columns, activeIndex, overIndex);
+      const movedColumn = board.columns.find((column) => column.id === active.id);
 
-      moveColumn(updateColumns);
+      if (movedColumn) {
+        try {
+          await moveColumn(board.projectId, movedColumn, updateColumns);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      setActiveId(null);
+      return;
     }
 
     const activeColumn = findColumn(active.id);
@@ -257,19 +267,29 @@ export function KanbanView() {
     const overColumn = findColumn(overId);
 
     if (overColumn) {
+      const activeTask = board.tasks[activeColumn].find((task) => task.id === active.id);
       const activeContainerTaskIds = board.tasks[activeColumn].map((task) => task.id);
       const overContainerTaskIds = board.tasks[overColumn].map((task) => task.id);
 
       const activeIndex = activeContainerTaskIds.indexOf(active.id);
       const overIndex = overContainerTaskIds.indexOf(overId);
 
-      if (activeIndex !== overIndex) {
-        const updateTasks = {
+      let updateTasks = board.tasks;
+
+      if (overIndex >= 0 && activeIndex !== overIndex) {
+        updateTasks = {
           ...board.tasks,
           [overColumn]: arrayMove(board.tasks[overColumn], activeIndex, overIndex),
         };
+        previewTaskMove(board.projectId, updateTasks);
+      }
 
-        moveTask(updateTasks);
+      if (activeTask) {
+        try {
+          await persistTaskMove(board.projectId, activeTask, overColumn, updateTasks[overColumn]);
+        } catch (error) {
+          console.error(error);
+        }
       }
     }
 
@@ -323,7 +343,12 @@ export function KanbanView() {
               strategy={horizontalListSortingStrategy}
             >
               {board?.columns.map((column) => (
-                <KanbanColumn key={column.id} column={column} tasks={board.tasks[column.id]}>
+                <KanbanColumn
+                  key={column.id}
+                  projectId={board.projectId}
+                  column={column}
+                  tasks={board.tasks[column.id]}
+                >
                   <SortableContext
                     items={board.tasks[column.id]}
                     strategy={verticalListSortingStrategy}
@@ -331,8 +356,8 @@ export function KanbanView() {
                     {board.tasks[column.id].map((task) => (
                       <KanbanTaskItem
                         key={task.id}
+                        projectId={board.projectId}
                         task={task}
-                        columnId={column.id}
                         disabled={isSortingContainer}
                       />
                     ))}
@@ -340,7 +365,7 @@ export function KanbanView() {
                 </KanbanColumn>
               ))}
 
-              <KanbanColumnAdd id={PLACEHOLDER_ID} />
+              <KanbanColumnAdd id={PLACEHOLDER_ID} projectId={board.projectId} />
             </SortableContext>
           </Box>
         </Stack>
@@ -378,7 +403,7 @@ export function KanbanView() {
           justifyContent: 'space-between',
         }}
       >
-        <Typography variant="h4">Kanban</Typography>
+        <Typography variant="h4">{board.projectName || 'Kanban'}</Typography>
 
         <FormControlLabel
           label="Fixed column"

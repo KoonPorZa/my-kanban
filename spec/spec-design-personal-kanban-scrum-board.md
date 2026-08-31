@@ -700,11 +700,12 @@ trace การตัดสินใจและ test coverage ได้
 
 ## 14. Next steps
 
-Foundation และ Google authentication พร้อมแล้ว ขั้นตอนต่อไปคือทำ Board persistence
-ให้เป็น application service กลางก่อนต่อ MCP adapter เพื่อไม่ให้ business rule แยกกัน
+Foundation, Google authentication และ Board persistence ผ่าน local verification แล้ว
+ขั้นตอนต่อไปคือเพิ่ม MCP adapter โดย reuse application services เดิมเพื่อไม่ให้
+business rule แยกกัน
 
-1. เพิ่ม Project, Board และ Issue application services พร้อม PostgreSQL persistence
-2. สร้าง OpenAPI artifact, Orval client และเปลี่ยน Board จาก local adapter
-3. เพิ่ม MCP token management, audit log และ Streamable HTTP adapter
-4. เพิ่ม Board polling 15 วินาทีและ macOS helper CLI
+1. เพิ่ม MCP token management, idempotency และ audit log migration
+2. เพิ่ม Streamable HTTP adapter และ Web `/mcp` proxy
+3. เพิ่ม Project-token UI และ macOS helper CLI
+4. ทดสอบ cross-Project isolation ด้วย Codex CLI และ Claude Code CLI
 5. ทำ UX specification และ test mapping สำหรับ Kanban, MCP และ Scrum phases
