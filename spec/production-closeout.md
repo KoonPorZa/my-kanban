@@ -1,6 +1,6 @@
 ---
 title: Production Closeout Record
-version: 1.4
+version: 1.5
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -37,6 +37,7 @@ Automated checks รันกับ production เมื่อ August 31 แล�
 | Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง              | Passed  |
 | Public bypass      | Railway-generated Web domain ถูกลบและตอบ `404`                 | Passed  |
 | Cloudflare TLS     | Owner ยืนยัน mode `Full`; HTTPS ตอบ `200` โดยไม่ redirect loop | Passed  |
+| Board acceptance   | Owner ทดสอบ create, edit, drag, archive และ reload             | Passed  |
 
 ## 2. Authenticated acceptance
 
@@ -45,10 +46,10 @@ session forging หรือการอ่านข้อความลับ�
 
 ### 2.1 Required Board acceptance
 
-Board persistence ยังเป็น gate ก่อนเริ่ม Phase 2 และต้องตรวจด้วย Google session ของ
-Product Owner
+Board persistence ผ่านการตรวจด้วย Google session ของ Product Owner เมื่อ
+September 1, 2026
 
-- [ ] สร้าง Task, แก้ไข, drag ข้าม Column, archive, reload และยืนยันข้อมูลคงอยู่
+- [x] สร้าง Task, แก้ไข, drag ข้าม Column, archive, reload และยืนยันข้อมูลคงอยู่
 
 ### 2.2 Deferred MCP acceptance
 
@@ -88,7 +89,7 @@ destructive impact และยอมรับ downtime การตรวจห
 - [x] Postgres live config อยู่ Singapore และยัง mount volume เดิม
 - [x] API pre-deploy migration และ Railway readiness ผ่าน
 - [x] HTTPS, OAuth redirect, MCP auth boundary และ unauthenticated API smoke ผ่าน
-- [ ] ยืนยัน authenticated Board ตาม Section 2.1
+- [x] ยืนยัน authenticated Board ตาม Section 2.1
 - [x] บันทึก MCP production acceptance เป็น deferred ตาม Section 2.2
 
 ## 5. Final surface hardening
@@ -107,7 +108,7 @@ destructive impact และยอมรับ downtime การตรวจห
 
 ## 6. Stop condition
 
-Phase 2 เริ่มได้เมื่อ Board acceptance ใน Section 2.1 และ Section 3 ถึง 5 ผ่านครบ ไม่มี
-unresolved production data risk และ Implementation Status ระบุ evidence ล่าสุดตรงกับ
-live Railway state MCP acceptance ใน Section 2.2 ยังคงเป็น deferred follow-up และห้าม
-รายงานว่า production-ready จนกว่าจะผ่านครบ
+Board acceptance ใน Section 2.1 และ production gate ใน Section 3 ถึง 5 ผ่านครบแล้ว
+Phase 2 เริ่มได้โดยไม่มี unresolved production data risk ตาม Owner waiver ที่บันทึกไว้
+MCP acceptance ใน Section 2.2 ยังคงเป็น deferred follow-up และห้ามรายงานว่า MCP
+production-ready จนกว่าจะผ่านครบ
