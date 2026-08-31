@@ -12,6 +12,7 @@ import { IssuesModule } from './issues/issues.module';
 import { BoardsModule } from './boards/boards.module';
 import { envValidationSchema } from './config/env-validation.schema';
 import { DomainExceptionFilter } from './common/http/domain-exception.filter';
+import { McpModule } from './mcp/mcp.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DomainExceptionFilter } from './common/http/domain-exception.filter';
     ProjectsModule,
     IssuesModule,
     BoardsModule,
+    McpModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },

@@ -5,6 +5,7 @@ import { ArgumentsHost, Catch, type ExceptionFilter } from '@nestjs/common';
 import {
   DomainError,
   DomainConflictError,
+  DomainUnauthorizedError,
   ResourceNotFoundError,
   VersionConflictError,
   DomainValidationError,
@@ -25,6 +26,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
   private statusFor(error: DomainError) {
     if (error instanceof ResourceNotFoundError) return 404;
+    if (error instanceof DomainUnauthorizedError) return 401;
     if (error instanceof VersionConflictError || error instanceof DomainConflictError) return 409;
     if (error instanceof DomainValidationError) return 400;
     return 500;

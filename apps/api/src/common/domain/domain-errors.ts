@@ -38,3 +38,11 @@ export class DomainConflictError extends DomainError {
     super(message);
   }
 }
+
+export class DomainUnauthorizedError extends DomainError {
+  readonly code = 'unauthorized';
+
+  constructor(message = 'Authentication failed') {
+    super(message);
+  }
+}

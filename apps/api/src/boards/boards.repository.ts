@@ -4,6 +4,8 @@ import type { MoveColumnDto, CreateColumnDto, UpdateColumnDto } from './dto/colu
 export abstract class BoardsRepository {
   abstract get(ownerId: string, projectId: string): Promise<BoardResponseDto>;
 
+  abstract getForProject(projectId: string): Promise<BoardResponseDto>;
+
   abstract createColumn(
     ownerId: string,
     projectId: string,

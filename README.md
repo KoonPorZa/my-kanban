@@ -4,12 +4,13 @@ My Kanban is a private personal Kanban and Scrum application. The repository is
 a pnpm workspace with a Next.js frontend, a NestJS API, and PostgreSQL through
 Prisma. The current foundation includes the adapted Kanban board from Minimal
 TypeScript v7, local database migrations, health endpoints, and production
-builds.
+builds. The current MVP also includes Project-scoped Remote MCP access for AI
+clients and a macOS helper CLI.
 
 > **Note:** This is a preview application under active development. Google
 > login, PostgreSQL-backed sessions, and owner-scoped Board API persistence are
-> locally verified. Project-scoped Remote MCP access is specified but not
-> implemented yet.
+> locally verified together with the MCP vertical slice. Railway and Cloudflare
+> production deployment has not started yet.
 
 ## Repository structure
 
@@ -19,6 +20,7 @@ tooling.
 ```text
 apps/web/             Next.js App Router and Minimal Kanban UI
 apps/api/             NestJS Express API and Prisma schema
+apps/cli/             macOS Project-scoped Codex/Claude launcher
 packages/api-client/  Generated OpenAPI client target
 packages/config/      Shared tool configuration target
 spec/                 Product, architecture, data, and infrastructure specs
@@ -72,7 +74,38 @@ Use the following sequence to install the workspace and initialize PostgreSQL.
 
 Open `http://localhost:8083/auth/jwt/sign-in` and continue with an allowed Google
 account. The API listens on `http://localhost:3001`, and the Web service proxies
-`/api/*` to the API.
+`/api/*` and `/mcp` to the API. Manage Project tokens at
+`http://localhost:8083/dashboard/mcp-access`.
+
+## MCP access
+
+Each MCP access token is bound to exactly one Project for 90 days. The raw
+secret appears only once when created; the database stores only its prefix and
+SHA-256 hash. Revocation takes effect on the next MCP request.
+
+The public client endpoint is `/mcp` on the Web service. Local clients use
+`http://localhost:8083/mcp`; production will use
+`https://kanban.koonporza.com/mcp`. The server exposes Project/Column reads and
+full Task create, read, update, move, archive, and restore access. It does not
+allow Project/Column mutation or hard delete. `create_tasks` accepts at most ten
+items and rolls the entire batch back if any item is invalid.
+
+Build and run the macOS helper from the repository:
+
+```sh
+corepack pnpm cli:build
+corepack pnpm --dir apps/cli link --global
+kanban project add personal --url http://localhost:8083/mcp
+kanban project list
+kanban codex personal
+kanban claude personal
+```
+
+The helper reads the token without echoing it, verifies the bound Project,
+stores the secret in macOS Keychain, and keeps only non-secret metadata in
+`~/.config/my-kanban/projects.json`. See
+[the helper CLI guide](./apps/cli/README.md) for one-time Codex and Claude MCP
+configuration.
 
 ## Git workflow
 
@@ -121,13 +154,14 @@ Cloudflare resource has been created or changed yet. Production deployment
 starts only after the local authentication and persistence slice is complete
 and the owner explicitly requests deployment.
 
-The approved Remote MCP endpoint will use the same public Web domain at
+The Remote MCP endpoint uses the same public Web domain at
 `https://kanban.koonporza.com/mcp`; the NestJS API and PostgreSQL remain private
-Railway services. A planned macOS `kanban` helper will load one Project token
-from Keychain for each Codex CLI or Claude Code session without binding to Git.
+Railway services. The macOS `kanban` helper loads one Project token from Keychain
+for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-The next vertical slice adds the MCP token and audit schema, Streamable HTTP
-adapter, Project-token UI, Web proxy, and macOS helper CLI on top of the shared
-Board and Issue application services.
+Run an authenticated browser smoke of token creation and the Project settings
+UI, then connect the helper to local Codex and Claude clients. After that, the
+next infrastructure slice deploys the Web, private API, and PostgreSQL services
+to Railway and attaches `kanban.koonporza.com` through Cloudflare.

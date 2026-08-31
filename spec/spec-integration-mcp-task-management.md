@@ -1,6 +1,6 @@
 ---
 title: MCP Task Management Integration Specification
-version: 1.0
+version: 1.1
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -340,6 +340,13 @@ Implementation พึ่ง protocol, client configuration และ credential 
 - macOS Keychain ผ่าน `/usr/bin/security`
 - Railway Web proxy, private API และ PostgreSQL
 
+### 8.1 Selected implementation
+
+Phase 1A pin official `@modelcontextprotocol/sdk` ที่ version `1.30.0` และ `zod` ที่
+version `3.25.76` ใน API และ helper CLI โดยใช้ stateful
+`StreamableHTTPServerTransport` ตาม protocol version `2025-06-18` Transport และ
+`McpServer` ถูกสร้างแยกต่อ session และ server revalidate bearer token ทุก request
+
 ## 9. Non-goals
 
 MCP MVP ไม่ครอบคลุมความสามารถต่อไปนี้
@@ -379,14 +386,18 @@ MCP MVP ไม่ครอบคลุมความสามารถต่อ
 - [OpenAI Codex configuration reference](https://developers.openai.com/codex/config-reference)
 - [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp)
 
-## 12. Next steps
+## 12. Implementation status and next steps
 
-MCP implementation เริ่มหลัง Issues application service และ PostgreSQL persistence
-พร้อม เพื่อให้ REST และ MCP ใช้ business logic ชุดเดียวกัน
+Phase 1A local implementation เสร็จแล้วตามลำดับต่อไปนี้
 
-1. เพิ่ม MCP token และ audit tables ใน Prisma migration
+1. เพิ่ม MCP token, mutation idempotency และ audit tables ใน Prisma migration
 2. ทำ Project token management REST API และ Web settings UI
-3. ทำ `McpModule` และ Streamable HTTP endpoint
-4. เพิ่ม Board polling ทุก 15 วินาทีและ refetch on focus
-5. สร้าง macOS helper CLI และ Codex/Claude launch adapters
-6. รัน cross-Project isolation และ client smoke tests
+3. ทำ `McpModule`, Streamable HTTP endpoint และ Web `/mcp` proxy
+4. reuse Board/Issues application services พร้อม Project-bound reads/mutations
+5. เพิ่ม Board polling ทุก 15 วินาทีและ refetch on focus
+6. สร้าง macOS helper CLI และ Codex/Claude launch adapters
+7. รัน protocol, cross-Project isolation, idempotency, atomic batch, audit, revoke,
+   proxy และ CLI automated tests ผ่านทั้งหมด
+
+งานถัดไปคือ authenticated browser smoke ของ token UI, manual Codex/Claude smoke ผ่าน
+local `/mcp`, จากนั้นจึง deploy Railway services และผูก Cloudflare production domain

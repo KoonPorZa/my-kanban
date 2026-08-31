@@ -13,6 +13,7 @@ async function generateOpenApi() {
     exclude: [
       { path: 'health/live', method: RequestMethod.GET },
       { path: 'health/ready', method: RequestMethod.GET },
+      { path: 'mcp', method: RequestMethod.ALL },
     ],
   });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });

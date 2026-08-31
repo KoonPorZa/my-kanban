@@ -478,6 +478,144 @@
         "summary": "Archive a board column and its tasks",
         "tags": ["boards"]
       }
+    },
+    "/api/v1/projects/{projectId}/mcp-tokens": {
+      "get": {
+        "operationId": "listMcpTokens",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/McpTokenResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List Project MCP tokens",
+        "tags": ["mcp-tokens"]
+      },
+      "post": {
+        "operationId": "createMcpToken",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMcpTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedMcpTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a Project MCP token",
+        "tags": ["mcp-tokens"]
+      }
+    },
+    "/api/v1/projects/{projectId}/mcp-tokens/{tokenId}/revoke": {
+      "post": {
+        "operationId": "revokeMcpToken",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tokenId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke a Project MCP token",
+        "tags": ["mcp-tokens"]
+      }
+    },
+    "/api/v1/projects/{projectId}/mcp-audit-events": {
+      "get": {
+        "operationId": "listMcpAuditEvents",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/McpAuditEventResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List Project MCP audit events",
+        "tags": ["mcp-tokens"]
+      }
     }
   },
   "info": {
@@ -915,6 +1053,199 @@
           }
         },
         "required": ["version"]
+      },
+      "McpTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          },
+          "tokenPrefix": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "label",
+          "clientType",
+          "tokenPrefix",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt",
+          "createdAt"
+        ]
+      },
+      "CreateMcpTokenDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          }
+        },
+        "required": ["label", "clientType"]
+      },
+      "CreatedMcpTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": ["codex", "claude", "other"]
+          },
+          "tokenPrefix": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rawToken": {
+            "type": "string",
+            "description": "Shown once. The API never returns this value again."
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "label",
+          "clientType",
+          "tokenPrefix",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt",
+          "createdAt",
+          "rawToken"
+        ]
+      },
+      "McpAuditEventResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenLabel": {
+            "type": "string"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["success", "rejected", "failed"]
+          },
+          "changedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "tokenId",
+          "tokenLabel",
+          "issueId",
+          "toolName",
+          "requestId",
+          "outcome",
+          "changedFields",
+          "errorCode",
+          "createdAt"
+        ]
       }
     }
   }
