@@ -1,8 +1,8 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.8
+version: 1.9
 date_created: 2026-08-31
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 owner: Product owner
 tags: [implementation, status, phase-0, kanban]
 ---
@@ -164,11 +164,11 @@ Foundation มี evidence ล่าสุดดังนี้
 
 ## 7. Deployment status
 
-Railway production มี `web`, `api` และ `Postgres` online โดย Web มี custom domain
-`kanban.koonporza.com` และ Railway-generated domain
-`web-production-4f560e.up.railway.app` ที่รอลบหลัง Owner ยืนยัน exact domain API และ
-PostgreSQL ไม่มี public domain/TCP proxy Certificate ของ custom domain valid และ Google
-login ผ่าน browser แล้ว
+Railway production มี `web`, `api` และ `Postgres` online โดย Web เหลือ public custom
+domain `kanban.koonporza.com` เพียงรายการเดียว Railway-generated domain
+`web-production-4f560e.up.railway.app` ถูกลบเมื่อ September 1, 2026 และตอบ `404` หลังลบ
+API และ PostgreSQL ไม่มี public domain/TCP proxy Certificate ของ custom domain valid
+และ Google login ผ่าน browser แล้ว
 
 Web, API และ Postgres อยู่ Singapore region เดียวกันแล้ว การย้าย Postgres deployment
 `58ae38a5-9724-449c-bb16-07877c793939` สำเร็จและ API pre-deploy ตรวจพบ migration
@@ -181,7 +181,7 @@ Railway plan ปัจจุบันไม่รองรับ volume backup/P
 
 ## 8. Next steps
 
-ปิด checklist ใน `production-closeout.md`: authenticated Board persistence,
-Cloudflare SSL mode และ public bypass domain จากนั้นจึงเริ่ม Phase 2: Scrum MVP
+ปิด checklist ใน `production-closeout.md`: authenticated Board persistence และ
+Cloudflare SSL mode จากนั้นจึงเริ่ม Phase 2: Scrum MVP Public bypass domain ถูกลบแล้ว
 Product Owner เลื่อน MCP mutation, revoke และ project-isolation acceptance ไว้ภายหลัง
 รายการนี้ยังไม่ผ่านและต้องทดสอบก่อนประกาศ MCP production-ready
