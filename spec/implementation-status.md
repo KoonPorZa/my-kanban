@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.1
+version: 1.2
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -10,9 +10,9 @@ tags: [implementation, status, phase-0, kanban]
 # Introduction
 
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
-August 31, 2026 Foundation และ authentication implementation พร้อมแล้ว แต่ Phase 0
-ยังไม่เสร็จจนกว่า Google callback จะผ่าน manual verification และ Board API จะ persist
-ข้อมูลจริง
+August 31, 2026 Foundation และ Google authentication ผ่าน local verification แล้ว แต่
+Phase 0 ยังไม่เสร็จจนกว่า Board API จะ persist ข้อมูลจริง Remote MCP requirements
+ได้รับอนุมัติแล้วและยังไม่ได้ implement
 
 ## 1. Completed foundation
 
@@ -37,7 +37,11 @@ August 31, 2026 Foundation และ authentication implementation พร้อ�
 - Session ID cookie เก็บสถานะฝั่ง PostgreSQL ใน `http_sessions`
 - Auth guard ป้องกัน endpoint โดย default และตรวจ allowlist ซ้ำทุก request
 - Login ครั้งแรกสร้าง Owner, Workspace, Project และ default columns ใน transaction
-- Repository ใช้ Gitflow โดยงานปัจจุบันอยู่บน `feature/google-auth`
+- Google callback, session cookie, `/api/v1/me`, profile UI และ logout ผ่าน browser
+  verification ด้วย account ใน allowlist
+- Google authentication merge เข้า `develop` ที่ commit `13f36d0`
+- Repository ใช้ Gitflow โดย MCP specification พัฒนาผ่าน
+  `feature/mcp-requirements` ก่อน merge เข้า `develop`
 
 ## 2. Temporary implementation
 
@@ -48,17 +52,33 @@ Kanban UI ใช้ temporary local adapter เพื่อให้ตรวจ
 Surface สำหรับ assignee, comment และ attachment ถูกตัดออกตามขอบเขต single-user MVP
 ส่วน priority, label, description, checklist และ drag-and-drop ยังอยู่ใน UI baseline
 
-## 3. Pending Phase 0 work
+## 3. Approved MCP requirements
+
+MCP scope ถูก crystallize แล้วใน specification แยก แต่ยังไม่มี schema, endpoint, UI
+หรือ helper CLI implementation
+
+- Production endpoint ใช้ Streamable HTTP ที่
+  `https://kanban.koonporza.com/mcp` ผ่าน Web proxy ไป private NestJS API
+- Access token หนึ่งรายการผูก Project เดียว, อายุคงที่ 90 วัน, แสดง raw token ครั้งเดียว
+  และ revoke แยกรายการได้
+- MCP อ่าน Project/Columns และทำ Task read/create/update/move/archive/restore ได้ แต่
+  แก้ Project/Columns หรือ hard delete ไม่ได้
+- `create_tasks` รับได้ไม่เกิน 10 รายการและทำงานแบบ atomic; mutation อื่นทำทีละ Task
+- Mutation ใช้ version check, idempotency key และ audit log ทุกครั้ง
+- Board refetch ทุก 15 วินาทีและเมื่อ browser กลับมา focus
+- macOS helper CLI `kanban` เก็บ token ใน Keychain และเปิด Codex/Claude session แบบ
+  Project-scoped โดยไม่ผูก Git repository
+
+## 4. Pending Phase 0 work
 
 งานต่อไปนี้ต้องเสร็จก่อนปิด Phase 0
 
-1. ยืนยัน Google callback และ session cookie ผ่าน browser ด้วย account ใน allowlist
-2. เพิ่ม Project, Board และ Issue NestJS modules พร้อม owner scoping
-3. สร้าง OpenAPI artifact และ Orval TanStack Query client
-4. เปลี่ยน temporary local adapter เป็น API persistence พร้อม optimistic rollback
-5. เพิ่ม API integration และ browser smoke tests
+1. เพิ่ม Project, Board และ Issue NestJS modules พร้อม owner scoping
+2. สร้าง OpenAPI artifact และ Orval TanStack Query client
+3. เปลี่ยน temporary local adapter เป็น API persistence พร้อม optimistic rollback
+4. เพิ่ม API integration และ browser smoke tests
 
-## 4. Verification record
+## 5. Verification record
 
 Foundation มี evidence ล่าสุดดังนี้
 
@@ -66,7 +86,7 @@ Foundation มี evidence ล่าสุดดังนี้
 | -------------------------------- | ----------------------------------- |
 | `corepack pnpm typecheck`        | Passed                              |
 | `corepack pnpm lint`             | Passed                              |
-| `corepack pnpm test`             | Passed; API has 5 tests             |
+| `corepack pnpm test`             | Passed; API 5 and Web 1 test        |
 | `corepack pnpm build`            | Passed for Web, API, and API client |
 | `prisma validate`                | Passed                              |
 | `prisma migrate dev --name init` | Applied to local PostgreSQL         |
@@ -75,15 +95,17 @@ Foundation มี evidence ล่าสุดดังนี้
 | Swagger JSON                     | Served from `/api/docs-json`        |
 | `GET /api/v1/me` without session | `401`                               |
 | `GET /api/v1/auth/google`        | `302` with state and nonce          |
+| Google callback in browser       | Passed with allowed account         |
+| Authenticated profile UI         | Displays Google name/email/avatar   |
 
-## 5. Deployment status
+## 6. Deployment status
 
 ยังไม่มีการ provision หรือแก้ไข Railway และ Cloudflare resource Local implementation
 พร้อมเป็นฐานสำหรับ target topology ที่มี Railway `web`, `api` และ `Postgres` services
 โดย public domain มีเพียง `kanban.koonporza.com`
 
-## 6. Next steps
+## 7. Next steps
 
-ยืนยัน login ผ่าน browser แล้วเชื่อม Board read/write path ตั้งแต่ Web proxy ผ่าน
-NestJS ไป PostgreSQL เมื่อ local acceptance tests ผ่านจึงเริ่ม Railway deployment
-ตามคำสั่งผู้ใช้
+ทำ Board read/write application services เป็น business-logic boundary ร่วมสำหรับ REST
+และ MCP ก่อน จากนั้นเพิ่ม API persistence, MCP token/schema/adapter และ helper CLI
+ตามลำดับ เมื่อ local acceptance tests ผ่านจึงเริ่ม Railway deployment ตามคำสั่งผู้ใช้

@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban PostgreSQL Data Specification
-version: 1.1
+version: 1.2
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -12,13 +12,14 @@ tags: [data, postgresql, prisma, schema, migration]
 เอกสารนี้กำหนด relational data model สำหรับ Personal Kanban and Scrum Board โดยใช้
 PostgreSQL บน Railway เป็น source of truth และ Prisma เป็น ORM กับ migration tool
 เป้าหมายคือรักษา domain invariants, รองรับ transaction ของ Board และ Sprint และ
-ป้องกันการสูญหายของข้อมูลระหว่าง deploy หรือ retry
+ป้องกันการสูญหายของข้อมูลระหว่าง deploy หรือ retry รวมถึงรองรับ Project-scoped
+MCP access token, mutation idempotency และ audit trail
 
 ## 1. Purpose & scope
 
 ข้อกำหนดนี้ครอบคลุม table, relation, constraints, indexes, rank strategy,
-transaction boundaries, migration และ backup contract สำหรับ MVP ไม่กำหนด UI
-หรือ HTTP endpoint โดยตรง
+transaction boundaries, MCP credential metadata, audit retention, migration และ
+backup contract สำหรับ MVP ไม่กำหนด UI หรือ HTTP endpoint โดยตรง
 
 ## 2. Definitions
 
@@ -32,6 +33,9 @@ transaction boundaries, migration และ backup contract สำหรับ M
 - **Version**: Integer ที่เพิ่มทุกครั้งเมื่อแก้ record เพื่อป้องกัน lost update
 - **Partial unique index**: Unique index ที่ใช้กับ record บางสถานะเท่านั้น
 - **Migration**: การเปลี่ยน schema แบบมี version ที่เก็บใน source control
+- **MCP access token**: Bearer credential ที่ผูกกับ Project เดียวและเก็บเฉพาะ hash
+- **Idempotency record**: ผลลัพธ์ของ mutation key เดิมที่ใช้ป้องกันการทำงานซ้ำ
+- **Audit event**: Metadata ของ MCP mutation สำหรับตรวจสอบย้อนหลังโดยไม่เก็บ raw token
 
 ## 3. Requirements, constraints & guidelines
 
@@ -54,6 +58,11 @@ Data layer ต้องบังคับ invariant ที่ PostgreSQL ตร�
   สำหรับ field ที่มีขอบเขตแน่นอน
 - **DAT-009**: Query ทุกตัวที่อ่าน domain data ต้อง scope ด้วย `owner_id` หรือ
   `workspace_id`
+- **DAT-010**: MCP query และ mutation ต้อง scope ด้วย `project_id` ที่ resolve จาก
+  access token เท่านั้น
+- **DAT-011**: Raw MCP token ต้องไม่ถูก persist ใน PostgreSQL, log หรือ audit event
+- **DAT-012**: MCP mutation ต้องบันทึก idempotency result และ audit event ใน
+  transaction boundary ที่สอดคล้องกับ domain mutation
 
 ### 3.2 Rank requirements
 
@@ -86,6 +95,12 @@ Constraint ต่อไปนี้ต้องบังคับใน migratio
 - **INT-011**: HTTP session ต้องมีวันหมดอายุและห้ามเก็บ Google access token หากไม่จำเป็น
 - **INT-012**: Google identity ต้อง unique ด้วยคู่ `provider` และ `provider_subject`
 - **INT-013**: Email identity ต้อง normalize lowercase และผ่านการยืนยันจาก Google
+- **INT-014**: MCP access token ต้องอ้างถึง Project เดียวและมี `expires_at` เท่ากับ
+  `created_at + 90 days`
+- **INT-015**: Token ที่หมดอายุหรือมี `revoked_at` ต้องใช้ authenticate ไม่ได้
+- **INT-016**: Idempotency key เดิมใน scope เดียวกันต้องใช้กับ request fingerprint
+  เดิมเท่านั้น
+- **INT-017**: MCP audit event ต้องอ้าง `project_id` และ token ที่เป็นต้นทางเสมอ
 
 ### 3.4 Migration requirements
 
@@ -156,7 +171,80 @@ Table นี้เก็บ server-side session สำหรับ `express-sess
 Session table ต้องสร้างผ่าน migration ใน source control และ expired row ต้องลบได้
 โดยไม่กระทบ Owner หรือ domain data
 
-### 4.2 Workspace and project tables
+### 4.2 MCP access and audit tables
+
+ตารางกลุ่มนี้เก็บ credential metadata, retry result และ mutation trail โดยไม่เก็บ
+raw token หรือ snapshot ของรายละเอียด Issue ทั้งก้อน
+
+#### `mcp_access_tokens`
+
+Token แต่ละรายการผูกกับ Project เดียว แยกตาม client/device และ revoke แยกรายการได้
+
+| Column          | Type         | Rules                                    |
+| --------------- | ------------ | ---------------------------------------- |
+| `id`            | UUID         | Primary key                              |
+| `project_id`    | UUID         | FK `projects`, restrict delete, indexed  |
+| `created_by_id` | UUID         | FK `users`, restrict delete              |
+| `label`         | VARCHAR(80)  | Required                                 |
+| `client_type`   | ENUM         | `codex`, `claude`, `other`               |
+| `token_prefix`  | VARCHAR(24)  | Required, unique                         |
+| `token_hash`    | VARCHAR(128) | Required, unique                         |
+| `expires_at`    | TIMESTAMPTZ  | Required, exactly 90 days after creation |
+| `last_used_at`  | TIMESTAMPTZ  | Nullable                                 |
+| `revoked_at`    | TIMESTAMPTZ  | Nullable                                 |
+| `created_at`    | TIMESTAMPTZ  | Required                                 |
+| `updated_at`    | TIMESTAMPTZ  | Required                                 |
+
+Raw token แสดงใน Web UI ได้ครั้งเดียวหลังสร้าง จากนั้น lookup ด้วย prefix และ
+เปรียบเทียบ hash แบบ constant-time เท่านั้น การ rotate ทำโดยออก token ใหม่แล้ว revoke
+รายการเดิม
+
+#### `mutation_idempotency`
+
+Record นี้ป้องกัน retry ของ MCP mutation และออกแบบให้ application service ใช้ร่วมกับ
+REST mutation ได้ในอนาคต
+
+| Column                | Type         | Rules                                  |
+| --------------------- | ------------ | -------------------------------------- |
+| `id`                  | UUID         | Primary key                            |
+| `project_id`          | UUID         | FK `projects`, cascade delete, indexed |
+| `actor_type`          | ENUM         | `user`, `mcp_token`                    |
+| `actor_id`            | UUID         | Required                               |
+| `operation`           | VARCHAR(80)  | Required                               |
+| `idempotency_key`     | VARCHAR(128) | Required                               |
+| `request_fingerprint` | VARCHAR(128) | Required                               |
+| `response_status`     | INTEGER      | Required                               |
+| `response_body`       | JSONB        | Required; excludes secrets             |
+| `expires_at`          | TIMESTAMPTZ  | Required                               |
+| `created_at`          | TIMESTAMPTZ  | Required                               |
+
+ต้องมี unique constraint ที่
+`(project_id, actor_type, actor_id, operation, idempotency_key)` และ request ที่ใช้ key
+เดิมกับ fingerprint ต่างกันต้องถูกปฏิเสธ ไม่ replay ผลลัพธ์เดิมอย่างเงียบ ๆ
+
+#### `mcp_audit_events`
+
+Audit event บันทึกทุก MCP mutation ทั้งสำเร็จ ถูกปฏิเสธ และล้มเหลว เพื่อสืบค้นตาม
+Project, token, task และเวลา
+
+| Column            | Type         | Rules                                   |
+| ----------------- | ------------ | --------------------------------------- |
+| `id`              | UUID         | Primary key                             |
+| `project_id`      | UUID         | FK `projects`, restrict delete, indexed |
+| `token_id`        | UUID         | FK `mcp_access_tokens`, restrict delete |
+| `issue_id`        | UUID         | Nullable FK `issues`, set null          |
+| `tool_name`       | VARCHAR(80)  | Required                                |
+| `request_id`      | VARCHAR(128) | Required                                |
+| `idempotency_key` | VARCHAR(128) | Nullable                                |
+| `outcome`         | ENUM         | `success`, `rejected`, `failed`         |
+| `changed_fields`  | TEXT[]       | Required, default empty                 |
+| `error_code`      | VARCHAR(80)  | Nullable                                |
+| `created_at`      | TIMESTAMPTZ  | Required                                |
+
+Audit event ต้องไม่เก็บ raw token, Authorization header หรือ full description และต้อง
+เก็บอย่างน้อย 90 วันก่อน maintenance job จะลบ record ที่เกิน retention
+
+### 4.3 Workspace and project tables
 
 Workspace เป็น ownership boundary ส่วน Project เป็น lifecycle boundary ของ Board
 
@@ -191,7 +279,7 @@ Project แยก Kanban หรือ Scrum workflow และใช้ soft del
 | `created_at`       | TIMESTAMPTZ  | Required                                 |
 | `updated_at`       | TIMESTAMPTZ  | Required                                 |
 
-### 4.3 Board and issue tables
+### 4.4 Board and issue tables
 
 Board state ใช้ Column category แทนการเก็บ status string ซ้ำใน Issue
 
@@ -251,7 +339,7 @@ Checklist item มี lifecycle ตาม Issue และถูกลบพร�
 | `created_at`   | TIMESTAMPTZ  | Required                             |
 | `updated_at`   | TIMESTAMPTZ  | Required                             |
 
-### 4.4 Label tables
+### 4.5 Label tables
 
 Label เป็น Project-scoped และใช้ join table เพื่อรองรับ many-to-many
 
@@ -278,7 +366,7 @@ Join table ต้องป้องกันการเพิ่ม Label เ�
 | `label_id`  | UUID      | FK `labels`, cascade delete |
 | Primary key | Composite | `issue_id`, `label_id`      |
 
-### 4.5 Sprint table
+### 4.6 Sprint table
 
 Sprint เก็บ planning snapshot และผลลัพธ์เมื่อ complete
 
@@ -302,7 +390,7 @@ Active Sprint uniqueness ต้องบังคับด้วย partial uniq
 | `created_at`       | TIMESTAMPTZ  | Required                               |
 | `updated_at`       | TIMESTAMPTZ  | Required                               |
 
-### 4.6 Required indexes
+### 4.7 Required indexes
 
 Indexes ต้องรองรับ query จริงและตรวจด้วย query plan เมื่อมี fixture 2,000 Issue
 
@@ -318,6 +406,15 @@ Indexes ต้องรองรับ query จริงและตรวจ�
 - Unique `lower(auth_identities.email)`
 - `auth_identities(user_id)`
 - `http_sessions(expire)`
+- Unique `mcp_access_tokens(token_prefix)`
+- Unique `mcp_access_tokens(token_hash)`
+- `mcp_access_tokens(project_id, revoked_at, expires_at)`
+- Unique
+  `mutation_idempotency(project_id, actor_type, actor_id, operation, idempotency_key)`
+- `mutation_idempotency(expires_at)`
+- `mcp_audit_events(project_id, created_at DESC)`
+- `mcp_audit_events(token_id, created_at DESC)`
+- `mcp_audit_events(issue_id, created_at DESC) WHERE issue_id IS NOT NULL`
 
 ## 5. Acceptance criteria
 
@@ -341,6 +438,14 @@ Schema ถือว่าพร้อมเมื่อ constraint และ tra
   Then query plan ต้องใช้ indexes ที่กำหนดและผ่าน performance target
 - **AC-009**: Given export แล้ว import เข้าฐานข้อมูลว่าง, When เทียบ domain fields,
   Then ข้อมูลที่ผู้ใช้สร้างต้องตรงกันทั้งหมด
+- **AC-010**: Given สร้าง MCP token, When อ่าน database, Then ต้องพบเฉพาะ prefix
+  และ hash โดย `expires_at` ห่างจาก `created_at` 90 วัน
+- **AC-011**: Given token ถูก revoke หรือหมดอายุ, When authenticate, Then lookup ต้อง
+  ปฏิเสธ token โดยไม่เปิดเผยว่า prefix ใดมีอยู่จริง
+- **AC-012**: Given MCP mutation key เดิมและ fingerprint เดิม, When retry, Then ต้อง
+  คืนผลลัพธ์เดิมโดยไม่แก้ Issue ซ้ำ
+- **AC-013**: Given MCP mutation สำเร็จหรือถูกปฏิเสธ, When transaction จบ, Then ต้อง
+  มี audit event ที่ระบุ Project, token, tool, outcome และเวลา
 
 ## 6. Test automation strategy
 
@@ -354,6 +459,10 @@ index และ transaction behavior เหมือน production
 - Concurrency test ส่ง mutation version เดียวกันพร้อมกันสอง request
 - Import/export test ใช้ fixture ครบทุก table และ relation
 - Performance test ใช้ `EXPLAIN (ANALYZE, BUFFERS)` ใน test environment
+- Token repository test ครอบคลุม hash lookup, expiry, revoke และ Project scope
+- Idempotency integration test ครอบคลุม replay และ key reuse ที่ payload ต่างกัน
+- Audit test ยืนยันว่า success/rejection/failure ถูกบันทึกและไม่มี secret หรือ full
+  Issue description
 
 ## 7. Rationale & context
 
@@ -377,9 +486,10 @@ PostgreSQL อยู่บน Railway และไม่เปิด public TCP 
 
 ### Third-party services
 
-ไม่มี third-party data processor ใน MVP
+MCP client เข้าถึง Issue content เฉพาะผ่าน application authorization และไม่เชื่อม
+database โดยตรง
 
-- **SVC-001**: ไม่มี
+- **SVC-001**: Codex CLI หรือ Claude Code ผ่าน Remote MCP endpoint
 
 ### Infrastructure dependencies
 
@@ -421,6 +531,13 @@ Data implementation ต้องจัดการกรณีต่อไปน
 - HTTP session ที่หมดอายุต้องลบได้โดย maintenance command โดยไม่กระทบ User
 - Email ที่ถูกนำออกจาก allowlist ต้องถูกปฏิเสธใน request ถัดไปแม้ session ยังไม่หมดอายุ
 - Migration ที่เพิ่ม required column ต้อง backfill ก่อนตั้ง `NOT NULL`
+- Prefix ชนกันระหว่างสร้าง token ต้อง generate token ใหม่ก่อนตอบกลับ
+- Token หมดอายุระหว่าง long-running mutation ต้องยืนยันสิทธิ์ก่อนเริ่ม transaction และ
+  ไม่เริ่ม mutation ใหม่หลังหมดอายุ
+- `create_tasks` ล้มเหลวหนึ่งรายการต้อง rollback Issue และ audit success ทั้ง batch
+- หลัง batch rollback ต้องเขียน audit failure ด้วย request ID เดิมใน transaction ใหม่
+- Idempotency key เดิมแต่ payload ต่างกันต้องตอบ conflict และเขียน audit rejection
+- Maintenance job ห้ามลบ audit event ที่อายุยังไม่ถึง 90 วัน
 
 ## 10. Validation criteria
 
@@ -432,6 +549,9 @@ Data implementation ต้องจัดการกรณีต่อไปน
 - Integration tests ใช้ PostgreSQL version เดียวกับ production
 - Database URL ไม่ปรากฏใน browser bundle, test snapshot หรือ logs
 - Restore rehearsal จาก backup หรือ export ผ่านอย่างน้อยหนึ่งครั้งก่อนเปิดใช้งานจริง
+- Token table ไม่มี column ที่เก็บ raw credential และ backup ไม่สามารถกู้ raw token ได้
+- MCP mutation retry ไม่สร้าง Issue ซ้ำและ audit event เชื่อมกลับ Project/token ได้
+- Retention job ลบเฉพาะ idempotency/audit record ที่เกิน policy
 
 ## 11. Related specifications / further reading
 
@@ -441,5 +561,6 @@ Data implementation ต้องจัดการกรณีต่อไปน
 - [System architecture](./spec-architecture-kanban-system.md)
 - [Technology stack specification](./spec-architecture-technology-stack.md)
 - [Railway deployment](./spec-infrastructure-railway-deployment.md)
+- [MCP task management](./spec-integration-mcp-task-management.md)
 - [Railway PostgreSQL documentation](https://docs.railway.com/databases/postgresql)
 - [NestJS Prisma recipe](https://docs.nestjs.com/recipes/prisma)
