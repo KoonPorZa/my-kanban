@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Railway Deployment Specification
-version: 1.2
+version: 1.3
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -50,6 +50,8 @@ Codex CLI or Claude Code
 - **Environment**: Configuration plane ที่แยก variables และ resources ของแต่ละ stage
 - **Service**: Deployable unit ได้แก่ `web`, `api` และ `Postgres`
 - **Railpack**: Railway builder ที่ตรวจภาษาและ framework จาก source
+- **Railway IaC**: TypeScript desired state ใน `.railway/railway.ts` ที่ใช้ plan
+  และ apply ระดับ Project
 - **Reference variable**: Railway variable ที่อ้างค่าจาก service อื่น
 - **Private domain**: Internal DNS ภายใต้ `railway.internal`
 - **Custom domain**: Domain ที่ผู้ใช้เป็นเจ้าของและผูกกับ Railway service
@@ -76,6 +78,9 @@ reference variables
 - **INF-006**: Production database ต้องไม่มี public TCP proxy
 - **INF-007**: API ต้องไม่มี public domain ใน MVP
 - **INF-008**: Web service เป็น public entry point เพียง service เดียว
+- **INF-009**: Desired state ของ `web`, `api` และ `Postgres` ต้องอยู่ใน
+  `.railway/railway.ts` ไฟล์เดียว และห้ามใช้ `railway.json` หรือ `railway.toml`
+  ควบคู่กัน
 
 ### 3.2 Environment requirements
 
@@ -96,7 +101,8 @@ Repository เป็น shared pnpm monorepo จึงต้อง build จา�
 command ด้วย package name
 
 - **BLD-001**: Railway builder ต้องใช้ Railpack
-- **BLD-002**: Node.js version ต้อง pin ด้วย source และ Railway variable
+- **BLD-002**: Node.js ต้องใช้ version 22 ขึ้นไป และ Railway ต้อง pin
+  `RAILPACK_NODE_VERSION=22`
 - **BLD-003**: Install ต้องใช้ frozen `pnpm-lock.yaml`
 - **BLD-004**: Web build command ต้องเป็น `pnpm --filter @my-kanban/web build`
 - **BLD-005**: Web start command ต้องเป็น `pnpm --filter @my-kanban/web start`
@@ -149,7 +155,7 @@ Deployment ต้องป้องกัน application revision ที่ใ�
 - **DEP-001**: API pre-deploy command ต้องรัน Prisma production migration
 - **DEP-002**: Migration ต้องจบด้วย exit code 0 ก่อน API deployment รับ traffic
 - **DEP-003**: API healthcheck path ต้องเป็น `/health/ready`
-- **DEP-004**: Web healthcheck path ต้องเป็น `/`
+- **DEP-004**: Web healthcheck path ต้องเป็น `/health/live`
 - **DEP-005**: Railway ต้องสลับ traffic เมื่อ healthcheck ตอบ HTTP `200` เท่านั้น
 - **DEP-006**: Deploy แบบ detached ต้อง poll deployment จนเป็น `SUCCESS` ก่อนรายงาน
 - **DEP-007**: ถ้า API deploy ล้มเหลว Web revision เดิมต้องยังใช้งานกับ API เดิมได้
@@ -172,6 +178,8 @@ Secret ต้องอยู่ใน Railway variables เท่านั้น
 - **SEC-009**: Web/API access log ต้อง redact `Authorization`, `Mcp-Session-Id` และ
   query/header ที่อาจมี credential
 - **SEC-010**: `/mcp` ต้องรับเฉพาะ HTTPS จาก public client และ API private hop เท่านั้น
+- **SEC-011**: Production API log ต้องเป็น JSON, มี request ID, method, path ที่ไม่มี
+  query string, status และ duration โดยห้าม log request headers หรือ body
 
 ### 3.8 Backup and recovery requirements
 
@@ -195,8 +203,9 @@ Variable ต้องกำหนดเฉพาะ service ที่จำเ�
 | Variable                | Web      | API      | Source                                                     |
 | ----------------------- | -------- | -------- | ---------------------------------------------------------- |
 | `NODE_ENV`              | Required | Required | Literal `production`                                       |
-| `APP_ORIGIN`            | Required | Required | `https://kanban.koonporza.com`                             |
+| `APP_ORIGIN`            | No       | Required | `https://kanban.koonporza.com`                             |
 | `API_INTERNAL_URL`      | Required | No       | API private reference                                      |
+| `NEXT_PUBLIC_AUTH_SKIP` | Required | No       | Literal `false`                                            |
 | `DATABASE_URL`          | No       | Required | Postgres reference                                         |
 | `GOOGLE_CLIENT_ID`      | No       | Required | Google OAuth client                                        |
 | `GOOGLE_CLIENT_SECRET`  | No       | Required | Sealed secret                                              |
@@ -204,7 +213,8 @@ Variable ต้องกำหนดเฉพาะ service ที่จำเ�
 | `ALLOWED_GOOGLE_EMAILS` | No       | Required | Sealed comma-separated allowlist                           |
 | `SESSION_SECRET`        | No       | Required | Sealed secret                                              |
 | `SESSION_TTL_SECONDS`   | No       | Optional | Default `604800`                                           |
-| `RAILPACK_NODE_VERSION` | Required | Required | Pinned runtime                                             |
+| `RAILPACK_NODE_VERSION` | Required | Required | Literal `22`                                               |
+| `RAILPACK_INSTALL_CMD`  | Required | Required | `pnpm install --frozen-lockfile`                           |
 
 ### 4.2 Railway service configuration
 
@@ -212,12 +222,14 @@ Variable ต้องกำหนดเฉพาะ service ที่จำเ�
 
 | Service    | Builder       | Build                                | Start                                     | Healthcheck     |
 | ---------- | ------------- | ------------------------------------ | ----------------------------------------- | --------------- |
-| `web`      | Railpack      | `pnpm --filter @my-kanban/web build` | `pnpm --filter @my-kanban/web start`      | `/`             |
+| `web`      | Railpack      | `pnpm --filter @my-kanban/web build` | `pnpm --filter @my-kanban/web start`      | `/health/live`  |
 | `api`      | Railpack      | `pnpm --filter @my-kanban/api build` | `pnpm --filter @my-kanban/api start:prod` | `/health/ready` |
 | `Postgres` | Managed image | Railway-managed                      | Railway-managed                           | Railway-managed |
 
 API pre-deploy command ต้องเป็นคำสั่ง workspace ที่รัน `prisma migrate deploy` ใน
-package API ชื่อจริงต้องยืนยันหลัง scaffold ก่อนบันทึกใน Railway
+package API คือ `pnpm --filter @my-kanban/api prisma:deploy` Desired state ทั้งหมด
+อยู่ใน `.railway/railway.ts`; TypeScript config ต้องผ่าน
+`corepack pnpm railway:validate` ก่อน plan ทุกครั้ง
 
 ### 4.3 Cloudflare DNS contract
 
@@ -277,11 +289,18 @@ Infrastructure พร้อม production เมื่อเงื่อนไ�
   โดยไม่ส่ง raw token เข้า application log
 - **AC-011**: Given MCP response แบบ stream, When ผ่าน Web และ Cloudflare, Then client
   ต้องอ่าน protocol response และ session headers ได้ครบ
+- **AC-012**: Given API ทำงานใน production, When Railway เก็บ stdout/stderr, Then
+  HTTP request log ต้องเป็น JSON, มี `x-request-id` และไม่มี Authorization,
+  MCP session header หรือ query credential
 
 ## 6. Test automation strategy
 
 Infrastructure verification ต้องมีทั้ง static config checks และ deployed smoke tests
 
+- CI provision PostgreSQL 16, apply Prisma migrations และรัน format, typecheck,
+  lint, test และ build บน Node.js 22
+- `corepack pnpm typecheck` validate `.railway/railway.ts` ด้วย official Railway
+  TypeScript package
 - CI ตรวจ pnpm lockfile, workspace filters และ production builds
 - CI สร้าง OpenAPI client ก่อน Web build
 - CI apply database migrations กับ disposable PostgreSQL
@@ -398,17 +417,20 @@ Operation ต้องเตรียมรับกรณีต่อไปน�
 - [Railway private networking](https://docs.railway.com/networking/private-networking)
 - [Railway PostgreSQL](https://docs.railway.com/databases/postgresql)
 - [Railway healthchecks](https://docs.railway.com/deployments/healthchecks)
+- [Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)
 - [Cloudflare DNS records](https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/)
 
 ## 12. Next steps
 
 เอกสารนี้ยังไม่ provision resource จริง Local foundation, Google authentication,
-Board persistence, production build, PostgreSQL healthcheck และ migrations ผ่านแล้ว
-ขั้นตอน Railway เริ่มเมื่อผู้ใช้สั่ง deploy โดยตรง
+Board persistence, Remote MCP, production logging, CI, healthchecks, migrations และ
+Railway IaC พร้อมแล้ว Manual local MCP UI test ถูกเลื่อนไปตามคำสั่งผู้ใช้และไม่ block
+release-readiness phase
 
-1. ทำ MCP token management, `/mcp` proxy และ helper CLI ให้ผ่าน local tests
-2. สร้าง Railway Project และ services `web`, `api`, `Postgres`
-3. ตั้ง reference variables, pre-deploy command และ healthchecks
-4. Deploy และรอ Web กับ API เป็น `SUCCESS`
-5. เพิ่ม `kanban.koonporza.com` แล้วใส่ CNAME/TXT ใน Cloudflare
-6. ตรวจ HTTPS, login, API/MCP proxy, backup และ restore path
+1. สร้างหรือ link Railway Project และ `production` environment
+2. รัน `railway config plan`, ตรวจ destructive diff และ apply เมื่อผู้ใช้อนุมัติ plan
+3. ตั้ง sealed Google/session variables ก่อนเชื่อม source ของ `api` และ `web` กับ
+   branch `main`
+4. Deploy API ก่อน Web และ poll ทั้งสอง service จนเป็น terminal success
+5. ใส่ CNAME/TXT ที่ Railway คืนมาจริงใน Cloudflare
+6. ตรวจ HTTPS, login, Board, API/MCP proxy, private networking, logs และ backup

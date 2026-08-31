@@ -23,6 +23,8 @@ apps/api/             NestJS Express API and Prisma schema
 apps/cli/             macOS Project-scoped Codex/Claude launcher
 packages/api-client/  Generated OpenAPI client target
 packages/config/      Shared tool configuration target
+.railway/              Railway TypeScript Infrastructure as Code
+.github/workflows/     Continuous integration checks
 spec/                 Product, architecture, data, and infrastructure specs
 compose.yaml          Local PostgreSQL 16 service
 ```
@@ -31,7 +33,7 @@ compose.yaml          Local PostgreSQL 16 service
 
 Install the following tools before you start local development.
 
-- Node.js 20 or newer
+- Node.js 22 or newer
 - Corepack with pnpm 10.26.2
 - Colima
 - Docker CLI with Docker Compose
@@ -134,6 +136,9 @@ corepack pnpm api:generate
 The API exposes liveness at `/health/live`, readiness at `/health/ready`, and
 Swagger UI at `/api/docs`.
 
+GitHub Actions runs the same formatting, type, lint, test, and build checks with
+PostgreSQL 16 for pushes and pull requests targeting `develop` or `main`.
+
 ## Specifications
 
 Use these documents as the source of truth for product and technical decisions.
@@ -149,10 +154,10 @@ Use these documents as the source of truth for product and technical decisions.
 ## Deployment boundary
 
 The target production topology is Railway `web`, `api`, and `Postgres` services,
-with `kanban.koonporza.com` on the Web service through Cloudflare. No Railway or
-Cloudflare resource has been created or changed yet. Production deployment
-starts only after the local authentication and persistence slice is complete
-and the owner explicitly requests deployment.
+with `kanban.koonporza.com` on the Web service through Cloudflare. The desired
+state is defined in [the Railway IaC guide](./.railway/README.md), but no Railway
+project, service, database, domain, or Cloudflare record has been created or
+changed yet.
 
 The Remote MCP endpoint uses the same public Web domain at
 `https://kanban.koonporza.com/mcp`; the NestJS API and PostgreSQL remain private
@@ -161,7 +166,9 @@ for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-Run an authenticated browser smoke of token creation and the Project settings
-UI, then connect the helper to local Codex and Claude clients. After that, the
-next infrastructure slice deploys the Web, private API, and PostgreSQL services
-to Railway and attaches `kanban.koonporza.com` through Cloudflare.
+Create or link the production Railway project, review the IaC plan, set sealed
+Google/session variables, and connect the Web and API services to `main`. Then
+deploy API and Web, add the Railway-provided CNAME/TXT records to Cloudflare,
+and run the production login, Board, MCP, network, log, and backup smoke checks.
+The remaining manual local MCP UI test is deferred and does not block this
+release-readiness phase.

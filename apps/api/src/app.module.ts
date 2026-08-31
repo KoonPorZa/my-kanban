@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -13,6 +13,7 @@ import { BoardsModule } from './boards/boards.module';
 import { envValidationSchema } from './config/env-validation.schema';
 import { DomainExceptionFilter } from './common/http/domain-exception.filter';
 import { McpModule } from './mcp/mcp.module';
+import { RequestLoggingMiddleware } from './common/http/request-logging.middleware';
 
 @Module({
   imports: [
@@ -40,4 +41,8 @@ import { McpModule } from './mcp/mcp.module';
     { provide: APP_GUARD, useClass: SessionAuthGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggingMiddleware).forRoutes('*');
+  }
+}

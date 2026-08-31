@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.4
+version: 1.5
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -10,8 +10,9 @@ tags: [implementation, status, phase-0, kanban]
 # Introduction
 
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
-August 31, 2026 Foundation, Google authentication, Board persistence และ
-Project-scoped Remote MCP Phase 1A ผ่าน local automated verification แล้ว
+August 31, 2026 Foundation, Google authentication, Board persistence,
+Project-scoped Remote MCP Phase 1A และ MVP release-readiness ผ่าน local automated
+verification แล้ว
 
 ## 1. Completed foundation
 
@@ -87,7 +88,27 @@ protocol/integration verification แล้ว
 - MCP session revalidate bearer token ทุก request, lock token ต่อ session, ตรวจ Origin,
   rate limit 60 requests/minute และ prune idle session หลังหนึ่งชั่วโมง
 
-## 4. Completed vertical slices
+## 4. Completed MVP release readiness
+
+Release-readiness มี source-controlled configuration และ production safeguards แล้ว
+แต่ยังไม่ได้สร้างหรือเปลี่ยน Railway/Cloudflare resource จริง
+
+- `.railway/railway.ts` กำหนด `web`, `api` และ `Postgres` เป็น Railway TypeScript
+  Infrastructure as Code ในไฟล์เดียว
+- IaC pin Node.js 22, Railpack, frozen pnpm install, Singapore region, private
+  references, Prisma pre-deploy migration และ healthchecks
+- Web มี `/health/live` ที่ตอบ HTTP `200` โดยไม่ redirect ส่วน API ใช้
+  `/health/ready` ที่ตรวจ PostgreSQL
+- NestJS production logger ใช้ JSON และ request log มี request ID, method, path ที่
+  ไม่มี query string, status และ duration โดยไม่เก็บ headers หรือ body
+- GitHub Actions รัน PostgreSQL 16 migrations, format, typecheck, lint, test และ build
+  บน push/pull request ของ `develop` และ `main`
+- Root typecheck ตรวจ Railway IaC ด้วย official `railway` package
+- Railway CLI ถูกอัปเกรดเป็น `5.45.10`; repository ยังไม่ได้ link กับ Project จึงยัง
+  ไม่รัน external `railway config plan` หรือ apply
+- Manual local MCP UI test ถูก defer ตามคำสั่งผู้ใช้และไม่ block phase นี้
+
+## 5. Completed vertical slices
 
 งานต่อไปนี้เสร็จและผ่าน automated verification แล้ว
 
@@ -100,18 +121,20 @@ protocol/integration verification แล้ว
 7. เพิ่ม idempotency reservation, atomic batch และ mutation audit trail
 8. เพิ่ม Web proxy และ macOS Keychain helper CLI
 
-Authenticated browser smoke ของหน้า MCP access และ manual Codex/Claude launch ยังไม่
-ได้รันใน execution environment นี้ Automated protocol tests และ HTTP proxy smoke ผ่านแล้ว
+Authenticated browser smoke ของหน้า MCP access ถูก defer ตามคำสั่งผู้ใช้ ส่วน actual
+Codex และ Claude CLI smoke เรียก `get_context` ผ่าน Web `/mcp` สำเร็จ Automated
+protocol, mutation และ HTTP proxy smoke ผ่านแล้ว
 
-## 5. Verification record
+## 6. Verification record
 
 Foundation มี evidence ล่าสุดดังนี้
 
 | Check                             | Result                               |
 | --------------------------------- | ------------------------------------ |
+| `corepack pnpm railway:validate`  | Passed                               |
 | `corepack pnpm typecheck`         | Passed                               |
 | `corepack pnpm lint`              | Passed                               |
-| `corepack pnpm test`              | Passed; API 21, Web 2, CLI 4 tests   |
+| `corepack pnpm test`              | Passed; API 23, Web 3, CLI 4 tests   |
 | `corepack pnpm build`             | Passed for Web, API, client, and CLI |
 | `corepack pnpm api:generate`      | Passed; deterministic output         |
 | `corepack pnpm format:check`      | Passed                               |
@@ -127,15 +150,17 @@ Foundation มี evidence ล่าสุดดังนี้
 | Direct `POST /mcp`, invalid token | `401`, MCP JSON-RPC error            |
 | Web proxy `POST /mcp`             | Preserves `401` and bearer challenge |
 | MCP protocol integration          | 7 cases passed against PostgreSQL    |
+| `railway config plan --json`      | Blocked only by no linked Project    |
 
-## 6. Deployment status
+## 7. Deployment status
 
-ยังไม่มีการ provision หรือแก้ไข Railway และ Cloudflare resource Local implementation
-พร้อมเป็นฐานสำหรับ target topology ที่มี Railway `web`, `api` และ `Postgres` services
-โดย public domain มีเพียง `kanban.koonporza.com`
+ยังไม่มีการ provision หรือแก้ไข Railway และ Cloudflare resource Local desired state
+พร้อมสำหรับ target topology ที่มี Railway `web`, `api` และ `Postgres` services โดย
+public domain มีเพียง `kanban.koonporza.com`
 
-## 7. Next steps
+## 8. Next steps
 
-รัน authenticated browser smoke ของ MCP access UI และ manual helper smoke กับ Codex
-และ Claude Code โดยใช้ local endpoint จากนั้นเตรียม Railway environment variables,
-deploy migration/Web/private API/PostgreSQL และผูก Cloudflare domain ตามคำสั่งผู้ใช้
+สร้างหรือ link Railway Project, ตรวจ IaC plan, set sealed Google/session variables,
+เชื่อม `api` และ `web` กับ release commit บน `main`, deploy API ก่อน Web และเพิ่ม
+CNAME/TXT ที่ Railway คืนมาจริงใน Cloudflare จากนั้นรัน production login, Board,
+MCP, network, log และ backup smoke tests
