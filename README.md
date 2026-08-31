@@ -8,7 +8,8 @@ builds.
 
 > **Note:** This is a preview application under active development. The board
 > currently uses an in-browser TanStack Query adapter. Google login and
-> PostgreSQL-backed sessions are implemented; Board API persistence is next.
+> PostgreSQL-backed sessions are locally verified. Board API persistence is
+> next; Project-scoped Remote MCP access is specified but not implemented yet.
 
 ## Repository structure
 
@@ -102,6 +103,7 @@ Use these documents as the source of truth for product and technical decisions.
 - [Technology stack](./spec/spec-architecture-technology-stack.md)
 - [PostgreSQL data specification](./spec/spec-data-kanban-postgresql.md)
 - [Railway deployment specification](./spec/spec-infrastructure-railway-deployment.md)
+- [MCP task management specification](./spec/spec-integration-mcp-task-management.md)
 - [Implementation status](./spec/implementation-status.md)
 
 ## Deployment boundary
@@ -112,7 +114,14 @@ Cloudflare resource has been created or changed yet. Production deployment
 starts only after the local authentication and persistence slice is complete
 and the owner explicitly requests deployment.
 
+The approved Remote MCP endpoint will use the same public Web domain at
+`https://kanban.koonporza.com/mcp`; the NestJS API and PostgreSQL remain private
+Railway services. A planned macOS `kanban` helper will load one Project token
+from Keychain for each Codex CLI or Claude Code session without binding to Git.
+
 ## Next steps
 
-The next vertical slice adds Board API persistence, owner-scoped Project and
-Issue endpoints, and the generated Orval client.
+The next vertical slice adds shared Board application services, owner-scoped
+Project and Issue endpoints, API persistence, and the generated Orval client.
+The MCP adapter, Project-token UI, and helper CLI follow on top of those shared
+services.
