@@ -32,12 +32,13 @@ jobs:
       DATABASE_URL: postgresql://my_kanban:my_kanban_ci@localhost:5432/my_kanban_test?schema=public
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
