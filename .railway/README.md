@@ -2,9 +2,10 @@
 
 This directory defines the production Railway project as TypeScript
 Infrastructure as Code (IaC). The configuration creates the `web`, `api`, and
-`Postgres` resources, keeps API and database traffic private, runs Prisma
-migrations before API deployment, and attaches `kanban.koonporza.com` only to
-the Web service.
+`Postgres` resources, keeps API and database traffic private, and runs Prisma
+migrations before API deployment. Register `kanban.koonporza.com` on the Web
+service after the first deployment because Railway IaC doesn't support custom
+domain registration.
 
 > **Warning:** `railway config apply` changes external infrastructure. Review a
 > fresh plan before you apply it. Never add secrets to `railway.ts`.
@@ -34,6 +35,8 @@ The IaC file manages the following non-secret desired state.
 - It references PostgreSQL and the API through Railway private networking.
 - It preserves Google OAuth, email allowlist, and session secrets already held
   by Railway.
+- It intentionally omits the custom domain because Railway rejects domain
+  registration from TypeScript IaC.
 
 The file intentionally omits a GitHub source. This prevents the first
 infrastructure apply from deploying an application before required secrets are
@@ -54,9 +57,11 @@ Use this sequence from a release commit on `main`.
 5. Connect both application services to `KoonPorZa/my-kanban` on `main`.
 6. Deploy `api` first, wait for a terminal successful status, and then deploy
    `web`.
-7. Add the CNAME and TXT records returned for `kanban.koonporza.com` to
+7. Register `kanban.koonporza.com` on the `web` service with Railway CLI or the
+   Railway dashboard.
+8. Add the CNAME and TXT records returned for `kanban.koonporza.com` to
    Cloudflare.
-8. Verify HTTPS, Google login, Board persistence, the MCP endpoint, private
+9. Verify HTTPS, Google login, Board persistence, the MCP endpoint, private
    networking, logs, and database backups.
 
 ## Next steps

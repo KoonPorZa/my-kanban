@@ -81,6 +81,8 @@ reference variables
 - **INF-009**: Desired state ของ `web`, `api` และ `Postgres` ต้องอยู่ใน
   `.railway/railway.ts` ไฟล์เดียว และห้ามใช้ `railway.json` หรือ `railway.toml`
   ควบคู่กัน
+- **INF-010**: Custom domain ต้อง register แยกด้วย Railway CLI หรือ dashboard
+  หลัง Web deployment เพราะ Railway TypeScript IaC ไม่รองรับ domain registration
 
 ### 3.2 Environment requirements
 
