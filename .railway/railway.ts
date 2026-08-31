@@ -26,8 +26,6 @@ export default defineRailway((context) => {
     healthcheckTimeout: 300,
     replicas: isProduction ? { [SINGAPORE_REGION]: 1 } : 1,
     deploy: {
-      restartPolicyType: 'ON_FAILURE',
-      restartPolicyMaxRetries: 10,
       overlapSeconds: 30,
       drainingSeconds: 30,
     },
@@ -59,8 +57,6 @@ export default defineRailway((context) => {
     healthcheckTimeout: 300,
     replicas: isProduction ? { [SINGAPORE_REGION]: 1 } : 1,
     deploy: {
-      restartPolicyType: 'ON_FAILURE',
-      restartPolicyMaxRetries: 10,
       overlapSeconds: 30,
       drainingSeconds: 30,
     },

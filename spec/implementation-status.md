@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.6
+version: 1.7
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -159,6 +159,8 @@ Foundation มี evidence ล่าสุดดังนี้
 | API/Postgres public exposure      | No domain and no TCP proxy           |
 | Production credential log scan    | No token/header pattern found        |
 | Railway deployment status         | Web, API, Postgres `SUCCESS`         |
+| Railway production region         | All services in Singapore            |
+| Post-region Prisma deploy         | 3 migrations, none pending           |
 
 ## 7. Deployment status
 
@@ -166,12 +168,17 @@ Railway production มี `web`, `api` และ `Postgres` online โดย pub
 เฉพาะ `kanban.koonporza.com` บน Web API และ PostgreSQL ไม่มี public domain/TCP
 proxy Certificate ของ custom domain valid และ Google login ผ่าน browser แล้ว
 
-Live drift ที่ต้องปิดก่อน Phase 2 คือ Postgres ยังอยู่ region `sfo` ขณะที่ Web/API
-อยู่ Singapore การย้าย volume ต้องทำหลังมี backup ที่ restore ได้และต้องยอมรับ downtime
-ห้าม apply IaC region diff โดยตรงกับ production database
+Web, API และ Postgres อยู่ Singapore region เดียวกันแล้ว การย้าย Postgres deployment
+`58ae38a5-9724-449c-bb16-07877c793939` สำเร็จและ API pre-deploy ตรวจพบ migration
+ครบ 3 รายการโดยไม่มี migration ค้าง Volume เดิมยัง mount อยู่และ application smoke
+ผ่านหลังย้าย
+
+Railway plan ปัจจุบันไม่รองรับ volume backup/PITR Product Owner ยอมรับการข้าม backup
+ก่อน Phase 2 เพราะยังไม่มีข้อมูลใช้งานที่ต้องเก็บ การเปิด backup หรือ logical export
+ก่อนมีข้อมูลสำคัญเป็น hardening task ใน Phase 3
 
 ## 8. Next steps
 
 ปิด checklist ใน `production-closeout.md`: authenticated Board/MCP mutation smoke,
-token revoke/project isolation, backup schedule และ recovery point, isolated restore
-rehearsal และ Postgres region migration หลังจากนั้นจึงเริ่ม Phase 2: Scrum MVP
+token revoke/project isolation, Cloudflare SSL mode และ public bypass domain หลังจากนั้น
+จึงเริ่ม Phase 2: Scrum MVP

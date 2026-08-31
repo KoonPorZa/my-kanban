@@ -69,8 +69,9 @@ Use this sequence from a release commit on `main`.
 
 ## Next steps
 
-Production is provisioned and connected to `main`. Before Phase 2, complete the
-credential-gated checks and recovery actions in
-[`spec/production-closeout.md`](../spec/production-closeout.md). Do not apply a
-Postgres region change until a restorable backup exists and the downtime window
-has been accepted.
+Production is provisioned and connected to `main`, and all three services run in
+Singapore. Before Phase 2, complete the credential-gated checks and final
+public-surface hardening in
+[`spec/production-closeout.md`](../spec/production-closeout.md). The current
+Railway plan doesn't provide backups; the closeout record documents the Owner
+waiver and the Phase 3 recovery follow-up.

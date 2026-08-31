@@ -405,7 +405,7 @@ Operation ต้องเตรียมรับกรณีต่อไปน�
 - API และ PostgreSQL ไม่มี public domain หรือ TCP proxy
 - Web/API logs ไม่มี raw MCP token หรือ Authorization header
 - Production migration version ตรงกับ application revision
-- Backup policy เปิดและมี restore rehearsal record
+- Backup policy หรือ Product Owner waiver ตรงกับ Railway plan ปัจจุบัน
 
 ## 11. Related specifications / further reading
 
@@ -429,6 +429,7 @@ Production resources, custom domain, Google login, private network, healthchecks
 migrations และ deployment จาก `main` พร้อมใช้งานแล้ว หลักฐานและงานที่ต้องปิดก่อน
 Phase 2 อยู่ใน [production closeout record](./production-closeout.md)
 
-Postgres volume ปัจจุบันอยู่ `sfo` ต่างจาก Singapore desired state ห้าม apply region
-change จนกว่าจะมี manual recovery point ที่ยืนยันได้และ restore rehearsal ผ่าน เพราะ
-การย้ายมี downtime และความเสี่ยงต่อข้อมูลถ้า volume ไม่ถูกย้ายอย่างถูกต้อง
+Web, API และ Postgres อยู่ Singapore แล้ว Railway plan ปัจจุบันไม่รองรับ volume
+backup/PITR และ Product Owner ยอมรับการข้าม backup เพราะยังไม่มีข้อมูลสำคัญ
+Authenticated Board/MCP checks และ final public-surface hardening เป็น gate ที่เหลือ
+ก่อน Phase 2
