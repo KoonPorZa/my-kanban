@@ -55,7 +55,6 @@ export default defineRailway((context) => {
     healthcheck: '/health/live',
     healthcheckTimeout: 300,
     replicas: isProduction ? { [SINGAPORE_REGION]: 1 } : 1,
-    domains: isProduction ? ['kanban.koonporza.com'] : [],
     deploy: {
       restartPolicyType: 'ON_FAILURE',
       restartPolicyMaxRetries: 10,
