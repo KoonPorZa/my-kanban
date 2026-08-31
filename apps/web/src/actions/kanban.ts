@@ -345,7 +345,7 @@ export async function persistTaskMove(
   }
 }
 
-export async function deleteTask(projectId: string, task: IKanbanTask) {
+export async function archiveTask(projectId: string, task: IKanbanTask) {
   return optimisticMutation(
     projectId,
     (board) => ({

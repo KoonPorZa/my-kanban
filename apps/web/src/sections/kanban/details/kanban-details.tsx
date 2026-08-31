@@ -38,11 +38,11 @@ type Props = {
   task: IKanbanTask;
   open: boolean;
   onClose: () => void;
-  onDeleteTask: () => void;
+  onArchiveTask: () => void;
   onUpdateTask: (updateTask: IKanbanTask) => void;
 };
 
-export function KanbanDetails({ task, open, onUpdateTask, onDeleteTask, onClose }: Props) {
+export function KanbanDetails({ task, open, onUpdateTask, onArchiveTask, onClose }: Props) {
   const tabs = useTabs('overview');
   const liked = useBoolean();
 
@@ -93,7 +93,7 @@ export function KanbanDetails({ task, open, onUpdateTask, onDeleteTask, onClose 
         taskName={task.name}
         taskStatus={task.status}
         liked={liked.value}
-        onDelete={onDeleteTask}
+        onArchive={onArchiveTask}
         onLikeToggle={liked.onToggle}
         onCloseDetails={onClose}
       />

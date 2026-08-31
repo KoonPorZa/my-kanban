@@ -166,9 +166,8 @@ for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-Finish the credential-gated Board persistence check and final public-surface
-hardening before starting Phase 2. The Product Owner deferred production MCP
-acceptance; it remains unverified until the mutation, revocation, and Project
-isolation checks pass. PostgreSQL, API, and Web now run in Singapore. The current
-plan's backup limitation and Owner waiver are recorded in
-[the production closeout record](./spec/production-closeout.md).
+Finish the credential-gated Board archive and reload check before starting Phase 2. Cloudflare `Full` mode and public-surface hardening are verified. The Product
+Owner deferred production MCP acceptance; it remains unverified until the
+mutation, revocation, and Project isolation checks pass. PostgreSQL, API, and Web
+now run in Singapore. The current plan's backup limitation and Owner waiver are
+recorded in [the production closeout record](./spec/production-closeout.md).

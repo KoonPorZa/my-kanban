@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { useBoolean } from 'minimal-shared/hooks';
 import { useState, useEffect, useCallback } from 'react';
 
-import { deleteTask, updateTask } from 'src/actions/kanban';
+import { updateTask, archiveTask } from 'src/actions/kanban';
 
 import { toast } from 'src/components/snackbar';
 
@@ -31,10 +31,10 @@ export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps)
   const mounted = useMountStatus();
   const mountedWhileDragging = isDragging && !mounted;
 
-  const handleDeleteTask = useCallback(async () => {
+  const handleArchiveTask = useCallback(async () => {
     try {
-      await deleteTask(projectId, task);
-      toast.success('Delete success!', { position: 'top-center' });
+      await archiveTask(projectId, task);
+      toast.success('Task archived', { position: 'top-center' });
     } catch (error) {
       console.error(error);
     }
@@ -57,7 +57,7 @@ export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps)
       open={taskDetailsDialog.value}
       onClose={taskDetailsDialog.onFalse}
       onUpdateTask={handleUpdateTask}
-      onDeleteTask={handleDeleteTask}
+      onArchiveTask={handleArchiveTask}
     />
   );
 
