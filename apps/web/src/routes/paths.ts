@@ -44,6 +44,7 @@ export const paths = {
   dashboard: {
     root: ROOTS.DASHBOARD,
     kanban: `${ROOTS.DASHBOARD}/kanban`,
+    sprints: `${ROOTS.DASHBOARD}/sprints`,
     mcpAccess: `${ROOTS.DASHBOARD}/mcp-access`,
     two: `${ROOTS.DASHBOARD}/two`,
     three: `${ROOTS.DASHBOARD}/three`,

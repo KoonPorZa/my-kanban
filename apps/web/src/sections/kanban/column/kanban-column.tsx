@@ -19,6 +19,7 @@ import { KanbanColumnToolBar } from './kanban-column-toolbar';
 
 type ColumnProps = {
   projectId: string;
+  scrumMode?: boolean;
   disabled?: boolean;
   sx?: SxProps<Theme>;
   tasks: IKanbanTask[];
@@ -29,7 +30,15 @@ type ColumnProps = {
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 
-export function KanbanColumn({ projectId, children, column, tasks, disabled, sx }: ColumnProps) {
+export function KanbanColumn({
+  projectId,
+  scrumMode,
+  children,
+  column,
+  tasks,
+  disabled,
+  sx,
+}: ColumnProps) {
   const openAddTask = useBoolean();
 
   const { attributes, isDragging, listeners, setNodeRef, transition, active, over, transform } =
@@ -56,6 +65,7 @@ export function KanbanColumn({ projectId, children, column, tasks, disabled, sx 
         }
       } catch (error) {
         console.error(error);
+        toast.error('Could not update column. Try again.', { position: 'top-center' });
       }
     },
     [column, projectId]
@@ -66,6 +76,7 @@ export function KanbanColumn({ projectId, children, column, tasks, disabled, sx 
       await clearColumn(projectId, column);
     } catch (error) {
       console.error(error);
+      toast.error('Could not clear column. Try again.', { position: 'top-center' });
     }
   }, [column, projectId]);
 
@@ -76,6 +87,7 @@ export function KanbanColumn({ projectId, children, column, tasks, disabled, sx 
       toast.success('Delete success!', { position: 'top-center' });
     } catch (error) {
       console.error(error);
+      toast.error('Could not delete column. Try again.', { position: 'top-center' });
     }
   }, [column, projectId]);
 
@@ -87,6 +99,7 @@ export function KanbanColumn({ projectId, children, column, tasks, disabled, sx 
         openAddTask.onFalse();
       } catch (error) {
         console.error(error);
+        toast.error('Could not create task. Try again.', { position: 'top-center' });
       }
     },
     [column.id, openAddTask, projectId]
@@ -114,6 +127,7 @@ export function KanbanColumn({ projectId, children, column, tasks, disabled, sx 
             onUpdateColumn={handleUpdateColumn}
             onClearColumn={handleClearColumn}
             onDeleteColumn={handleDeleteColumn}
+            deleteDisabled={scrumMode}
             onToggleAddTask={openAddTask.onToggle}
           />
         ),

@@ -26,6 +26,8 @@ export function KanbanTaskAdd({ status, openAddTask, onAddTask, onCloseAddTask }
     () => ({
       id: uuidv4(),
       version: 1,
+      sprintId: null,
+      storyPoints: null,
       status,
       name: taskName.trim() ? taskName : 'Untitled',
       priority: 'medium',

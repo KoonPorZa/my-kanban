@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import type { SessionPrincipal } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BoardsService } from './boards.service';
 import { BoardResponseDto, BoardColumnResponseDto } from './dto/board-response.dto';
+import { BoardQueryDto } from './dto/board-query.dto';
 import {
   MoveColumnDto,
   CreateColumnDto,
@@ -20,8 +21,12 @@ export class BoardsController {
   @Get('projects/:projectId/board')
   @ApiOperation({ operationId: 'getBoard', summary: 'Get the active board aggregate' })
   @ApiOkResponse({ type: BoardResponseDto })
-  get(@CurrentUser() user: SessionPrincipal, @Param('projectId') projectId: string) {
-    return this.boards.get(user.userId, projectId);
+  get(
+    @CurrentUser() user: SessionPrincipal,
+    @Param('projectId') projectId: string,
+    @Query() query: BoardQueryDto
+  ) {
+    return this.boards.get(user.userId, projectId, query.sprintId);
   }
 
   @Post('projects/:projectId/columns')
@@ -65,7 +70,7 @@ export class BoardsController {
     @Param('columnId') columnId: string,
     @Body() input: VersionedColumnCommandDto
   ) {
-    return this.boards.clearColumn(user.userId, columnId, input.version);
+    return this.boards.clearColumn(user.userId, columnId, input.version, input.sprintId);
   }
 
   @Post('columns/:columnId/archive')

@@ -11,6 +11,8 @@ import type { IssueResponseDtoPriority } from './issueResponseDtoPriority';
 export interface IssueResponseDto {
   id: string;
   projectId: string;
+  /** @nullable */
+  sprintId: string | null;
   columnId: string;
   title: string;
   description: string;

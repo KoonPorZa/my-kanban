@@ -166,10 +166,11 @@ for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-The pre-Phase-2 production gate is complete. The Product Owner verified Board
-create, edit, drag, archive, and reload persistence on production. Phase 2 now
-adds Scrum planning, Active Sprint, Sprint Board, completion, history, and
-velocity. Production MCP acceptance remains deferred until the mutation,
-revocation, and Project isolation checks pass. PostgreSQL, API, and Web run in
-Singapore. The current plan's backup limitation and Owner waiver are recorded in
-[the production closeout record](./spec/production-closeout.md).
+The pre-Phase-2 production gate is complete. Phase 2 Scrum planning, Active
+Sprint Board, Story Points, completion snapshots, history, and velocity are now
+implemented and pass automated local verification. Authenticated browser
+acceptance is the remaining gate before the feature is merged to `develop` and
+released through Gitflow. Production MCP acceptance remains deferred until the
+mutation, revocation, and Project isolation checks pass. PostgreSQL, API, and Web
+run in Singapore. The current plan's backup limitation and Owner waiver are
+recorded in [the production closeout record](./spec/production-closeout.md).

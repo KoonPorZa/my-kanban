@@ -85,6 +85,24 @@ function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) 
           color: 'text.disabled',
         }}
       >
+        {task.storyPoints !== null && (
+          <Box
+            component="span"
+            aria-label={`${task.storyPoints} story points`}
+            sx={{
+              mr: 1,
+              px: 0.75,
+              py: 0.25,
+              borderRadius: 0.75,
+              color: 'primary.dark',
+              bgcolor: 'primary.lighter',
+              fontWeight: 'fontWeightSemiBold',
+            }}
+          >
+            {task.storyPoints} pts
+          </Box>
+        )}
+
         {!!task?.comments?.length && (
           <>
             <Iconify width={16} icon="solar:chat-round-dots-bold" sx={{ mr: 0.25 }} />

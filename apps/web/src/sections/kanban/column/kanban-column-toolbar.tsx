@@ -22,6 +22,7 @@ import { KanbanInputName } from '../components/kanban-input-name';
 type Props = BoxProps & {
   handleProps?: any;
   totalTasks?: number;
+  deleteDisabled?: boolean;
   columnName: string;
   onClearColumn?: () => void;
   onDeleteColumn?: () => void;
@@ -33,6 +34,7 @@ export function KanbanColumnToolBar({
   sx,
   columnName,
   totalTasks,
+  deleteDisabled,
   handleProps,
   onClearColumn,
   onToggleAddTask,
@@ -95,6 +97,7 @@ export function KanbanColumnToolBar({
         </MenuItem>
 
         <MenuItem
+          disabled={deleteDisabled}
           onClick={() => {
             confirmDialog.onTrue();
             menuActions.onClose();
@@ -102,7 +105,7 @@ export function KanbanColumnToolBar({
           sx={{ color: 'error.main' }}
         >
           <Iconify icon="solar:trash-bin-trash-bold" />
-          Delete
+          {deleteDisabled ? 'Delete (Kanban mode only)' : 'Delete'}
         </MenuItem>
       </MenuList>
     </CustomPopover>

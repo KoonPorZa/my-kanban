@@ -10,6 +10,8 @@ export interface MoveIssueDto {
   /** @minimum 1 */
   version: number;
   targetColumnId: string;
+  /** Visible Sprint scope used when ordering tasks on the Scrum Board */
+  sprintId?: string;
   beforeIssueId?: string;
   afterIssueId?: string;
 }

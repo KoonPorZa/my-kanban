@@ -14,6 +14,7 @@ import { envValidationSchema } from './config/env-validation.schema';
 import { DomainExceptionFilter } from './common/http/domain-exception.filter';
 import { McpModule } from './mcp/mcp.module';
 import { RequestLoggingMiddleware } from './common/http/request-logging.middleware';
+import { SprintsModule } from './sprints/sprints.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RequestLoggingMiddleware } from './common/http/request-logging.middlewa
     ProjectsModule,
     IssuesModule,
     BoardsModule,
+    SprintsModule,
     McpModule,
   ],
   providers: [

@@ -25,6 +25,7 @@ import type {
   BoardColumnResponseDto,
   BoardResponseDto,
   CreateColumnDto,
+  GetBoardParams,
   MoveColumnDto,
   UpdateColumnDto,
   VersionedColumnCommandDto,
@@ -40,17 +41,18 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
  */
 export const getBoard = (
   projectId: string,
+  params?: GetBoardParams,
   options?: SecondParameter<typeof apiClient>,
   signal?: AbortSignal
 ) => {
   return apiClient<BoardResponseDto>(
-    { url: `/api/v1/projects/${projectId}/board`, method: 'GET', signal },
+    { url: `/api/v1/projects/${projectId}/board`, method: 'GET', params, signal },
     options
   );
 };
 
-export const getGetBoardQueryKey = (projectId?: string) => {
-  return [`/api/v1/projects/${projectId}/board`] as const;
+export const getGetBoardQueryKey = (projectId?: string, params?: GetBoardParams) => {
+  return [`/api/v1/projects/${projectId}/board`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetBoardQueryOptions = <
@@ -58,6 +60,7 @@ export const getGetBoardQueryOptions = <
   TError = ErrorType<unknown>,
 >(
   projectId: string,
+  params?: GetBoardParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBoard>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
@@ -65,10 +68,10 @@ export const getGetBoardQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetBoardQueryKey(projectId);
+  const queryKey = queryOptions?.queryKey ?? getGetBoardQueryKey(projectId, params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getBoard>>> = ({ signal }) =>
-    getBoard(projectId, requestOptions, signal);
+    getBoard(projectId, params, requestOptions, signal);
 
   return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getBoard>>,
@@ -85,6 +88,7 @@ export function useGetBoard<
   TError = ErrorType<unknown>,
 >(
   projectId: string,
+  params: undefined | GetBoardParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBoard>>, TError, TData>> &
       Pick<
@@ -104,6 +108,7 @@ export function useGetBoard<
   TError = ErrorType<unknown>,
 >(
   projectId: string,
+  params?: GetBoardParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBoard>>, TError, TData>> &
       Pick<
@@ -123,6 +128,7 @@ export function useGetBoard<
   TError = ErrorType<unknown>,
 >(
   projectId: string,
+  params?: GetBoardParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBoard>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
@@ -138,13 +144,14 @@ export function useGetBoard<
   TError = ErrorType<unknown>,
 >(
   projectId: string,
+  params?: GetBoardParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBoard>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
   },
   queryClient?: QueryClient
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData> } {
-  const queryOptions = getGetBoardQueryOptions(projectId, options);
+  const queryOptions = getGetBoardQueryOptions(projectId, params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData>;

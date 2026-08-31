@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { useBoolean } from 'minimal-shared/hooks';
 import { useState, useEffect, useCallback } from 'react';
 
-import { updateTask, archiveTask } from 'src/actions/kanban';
+import { updateTask, archiveTask, moveTaskToBacklog } from 'src/actions/kanban';
 
 import { toast } from 'src/components/snackbar';
 
@@ -37,6 +37,7 @@ export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps)
       toast.success('Task archived', { position: 'top-center' });
     } catch (error) {
       console.error(error);
+      toast.error('Could not archive task. Try again.', { position: 'top-center' });
     }
   }, [projectId, task]);
 
@@ -46,10 +47,24 @@ export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps)
         await updateTask(projectId, taskData);
       } catch (error) {
         console.error(error);
+        toast.error('Could not update task. Your changes were not saved.', {
+          position: 'top-center',
+        });
       }
     },
     [projectId]
   );
+
+  const handleMoveToBacklog = useCallback(async () => {
+    try {
+      await moveTaskToBacklog(projectId, task);
+      taskDetailsDialog.onFalse();
+      toast.success('Task moved to backlog', { position: 'top-center' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Could not move task to backlog. Try again.', { position: 'top-center' });
+    }
+  }, [projectId, task, taskDetailsDialog]);
 
   const renderTaskDetailsDialog = () => (
     <KanbanDetails
@@ -58,6 +73,7 @@ export function KanbanTaskItem({ projectId, task, disabled, sx }: TaskItemProps)
       onClose={taskDetailsDialog.onFalse}
       onUpdateTask={handleUpdateTask}
       onArchiveTask={handleArchiveTask}
+      onMoveToBacklog={task.sprintId ? handleMoveToBacklog : undefined}
     />
   );
 

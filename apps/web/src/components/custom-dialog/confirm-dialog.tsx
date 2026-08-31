@@ -14,6 +14,7 @@ export function ConfirmDialog({
   action,
   content,
   onClose,
+  cancelDisabled = false,
   ...other
 }: ConfirmDialogProps) {
   return (
@@ -25,7 +26,7 @@ export function ConfirmDialog({
       <DialogActions>
         {action}
 
-        <Button variant="outlined" color="inherit" onClick={onClose}>
+        <Button variant="outlined" color="inherit" disabled={cancelDisabled} onClick={onClose}>
           Cancel
         </Button>
       </DialogActions>

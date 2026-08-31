@@ -93,4 +93,9 @@ export class VersionedColumnCommandDto {
   @IsInt()
   @Min(1)
   version!: number;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Limit the command to one Active Sprint' })
+  @IsOptional()
+  @IsUUID()
+  sprintId?: string;
 }

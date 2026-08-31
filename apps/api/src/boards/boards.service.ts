@@ -8,8 +8,8 @@ import type { MoveColumnDto, CreateColumnDto, UpdateColumnDto } from './dto/colu
 export class BoardsService {
   constructor(private readonly boards: BoardsRepository) {}
 
-  get(ownerId: string, projectId: string) {
-    return this.boards.get(ownerId, projectId);
+  get(ownerId: string, projectId: string, sprintId?: string) {
+    return this.boards.get(ownerId, projectId, sprintId);
   }
 
   getForProject(projectId: string) {
@@ -37,8 +37,8 @@ export class BoardsService {
     return this.boards.moveColumn(ownerId, columnId, input);
   }
 
-  clearColumn(ownerId: string, columnId: string, version: number) {
-    return this.boards.clearColumn(ownerId, columnId, version);
+  clearColumn(ownerId: string, columnId: string, version: number, sprintId?: string) {
+    return this.boards.clearColumn(ownerId, columnId, version, sprintId);
   }
 
   archiveColumn(ownerId: string, columnId: string, version: number) {

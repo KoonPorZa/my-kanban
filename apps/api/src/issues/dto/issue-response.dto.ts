@@ -7,6 +7,9 @@ export class IssueResponseDto {
   @ApiProperty({ format: 'uuid' })
   projectId!: string;
 
+  @ApiProperty({ format: 'uuid', nullable: true, type: String })
+  sprintId!: string | null;
+
   @ApiProperty({ format: 'uuid' })
   columnId!: string;
 
