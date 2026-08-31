@@ -1,6 +1,6 @@
 ---
 title: Production Closeout Record
-version: 1.1
+version: 1.2
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -11,7 +11,8 @@ tags: [production, railway, mcp, recovery, phase-2-gate]
 
 เอกสารนี้เป็น gate ก่อนเริ่ม Phase 2: Scrum MVP โดยแยกหลักฐานที่ตรวจอัตโนมัติแล้ว
 ออกจากงานที่ต้องใช้ Owner credential, browser session หรือยอมรับ downtime อย่างชัดเจน
-ห้ามประกาศ production closeout เสร็จจนกว่ารายการ Required action จะผ่านครบ
+ห้ามประกาศ production closeout เสร็จจนกว่ารายการ Required action จะผ่านครบหรือ
+Product Owner บันทึกการเลื่อนรายการนั้นอย่างชัดเจน
 
 ## 1. Verified production evidence
 
@@ -35,12 +36,24 @@ Automated checks รันกับ production เมื่อ August 31, 2026 �
 | Post-region deploy | Postgres, API และ Web deployment ใหม่                        | Success |
 | Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง            | Passed  |
 
-## 2. Required authenticated acceptance
+## 2. Authenticated acceptance
 
-รายการนี้ต้องใช้ Google session และ Project token ของ Owner จึงไม่ควร bypass ด้วย
+รายการนี้ต้องใช้ Google session และ Project token ของ Owner จึงไม่ bypass ด้วย
 session forging หรือการอ่านข้อความลับจาก Railway
 
+### 2.1 Required Board acceptance
+
+Board persistence ยังเป็น gate ก่อนเริ่ม Phase 2 และต้องตรวจด้วย Google session ของ
+Product Owner
+
 - [ ] สร้าง Task, แก้ไข, drag ข้าม Column, archive, reload และยืนยันข้อมูลคงอยู่
+
+### 2.2 Deferred MCP acceptance
+
+Product Owner เลื่อน production MCP acceptance เมื่อ August 31, 2026 รายการเหล่านี้
+ยังไม่ผ่านและต้องเปิดกลับมาทดสอบก่อนประกาศว่า MCP production-ready แต่ไม่ block การ
+เริ่ม Phase 2 ตามการตัดสินใจนี้
+
 - [ ] สร้าง production MCP token จากหน้า `/dashboard/mcp-access`
 - [ ] เพิ่ม token เข้า helper CLI และเรียก `get_context` ผ่าน public `/mcp`
 - [ ] MCP create/read/update/move/archive/restore Task สำเร็จใน Project เดียว
@@ -73,20 +86,24 @@ destructive impact และยอมรับ downtime การตรวจห
 - [x] Postgres live config อยู่ Singapore และยัง mount volume เดิม
 - [x] API pre-deploy migration และ Railway readiness ผ่าน
 - [x] HTTPS, OAuth redirect, MCP auth boundary และ unauthenticated API smoke ผ่าน
-- [ ] ยืนยัน authenticated Board และ MCP mutation ตาม Section 2
+- [ ] ยืนยัน authenticated Board ตาม Section 2.1
+- [x] บันทึก MCP production acceptance เป็น deferred ตาม Section 2.2
 
 ## 5. Final surface hardening
 
-หลัง authenticated และ recovery checks ผ่านแล้วจึงลด bypass surface และปิด record
+หลัง Board และ recovery checks ผ่านแล้วจึงลด bypass surface และปิด record
 
 - [ ] ยืนยัน Cloudflare SSL/TLS mode เป็น Full หรือ Full (Strict) และไม่มี redirect loop
-- [ ] ลบ Railway-generated Web domain เมื่อ Owner ยืนยัน exact domain
+- [ ] ลบ Railway-generated Web domain
+      `web-production-4f560e.up.railway.app` เมื่อ Owner ยืนยัน exact domain
 - [x] รัน network exposure และ secret log scan ซ้ำ
-- [ ] Merge `hotfix/0.1.3` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
-- [ ] ยืนยัน GitHub CI ของ `hotfix/0.1.3` เป็น success
+- [x] Merge `hotfix/0.1.3` เข้า `main` และ `develop`, tag และ push ตาม Gitflow
+- [x] ยืนยัน GitHub CI ของ `hotfix/0.1.3` เป็น success
 - [x] ยืนยัน Railway deployment ล่าสุดทั้งสาม service เป็น success
 
 ## 6. Stop condition
 
-Phase 2 เริ่มได้เมื่อ Section 2 ถึง 5 ผ่านครบ ไม่มี unresolved production data risk และ
-Implementation Status ระบุ evidence ล่าสุดตรงกับ live Railway state
+Phase 2 เริ่มได้เมื่อ Board acceptance ใน Section 2.1 และ Section 3 ถึง 5 ผ่านครบ ไม่มี
+unresolved production data risk และ Implementation Status ระบุ evidence ล่าสุดตรงกับ
+live Railway state MCP acceptance ใน Section 2.2 ยังคงเป็น deferred follow-up และห้าม
+รายงานว่า production-ready จนกว่าจะผ่านครบ
