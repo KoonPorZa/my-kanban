@@ -1,6 +1,6 @@
 ---
 title: Production Closeout Record
-version: 1.3
+version: 1.4
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -18,24 +18,25 @@ Product Owner บันทึกการเลื่อนรายการน
 
 Automated checks รันกับ production เมื่อ August 31 และ September 1, 2026 และได้ผลดังนี้
 
-| Check              | Evidence                                                     | Result  |
-| ------------------ | ------------------------------------------------------------ | ------- |
-| Service health     | Web, API และ Postgres มี replica `1/1`                       | Passed  |
-| Public HTTPS       | `GET https://kanban.koonporza.com/`                          | `200`   |
-| Web liveness       | `GET /health/live`                                           | `200`   |
-| Auth boundary      | `GET /api/v1/me` และ `/projects` ไม่มี session               | `401`   |
-| OAuth redirect     | Google callback ใช้ production HTTPS URL                     | Passed  |
-| Cookie baseline    | Session cookie เป็น HttpOnly, Secure, SameSite=Lax           | Passed  |
-| MCP auth boundary  | Missing และ invalid bearer token ที่ `POST /mcp`             | `401`   |
-| Network exposure   | API/Postgres ไม่มี domain หรือ TCP proxy                     | Passed  |
-| Custom domain      | Railway verified และ certificate valid                       | Passed  |
-| Request logging    | JSON มี request ID, method, path, status, duration           | Passed  |
-| Secret log scan    | ไม่พบ synthetic token, Authorization หรือ MCP session header | Passed  |
-| Config drift       | API มี live `PORT`; IaC fix เป็น `3001`                      | Passed  |
-| Region placement   | Web, API และ Postgres อยู่ Singapore                         | Passed  |
-| Post-region deploy | Postgres, API และ Web deployment ใหม่                        | Success |
-| Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง            | Passed  |
-| Public bypass      | Railway-generated Web domain ถูกลบและตอบ `404`               | Passed  |
+| Check              | Evidence                                                       | Result  |
+| ------------------ | -------------------------------------------------------------- | ------- |
+| Service health     | Web, API และ Postgres มี replica `1/1`                         | Passed  |
+| Public HTTPS       | `GET https://kanban.koonporza.com/`                            | `200`   |
+| Web liveness       | `GET /health/live`                                             | `200`   |
+| Auth boundary      | `GET /api/v1/me` และ `/projects` ไม่มี session                 | `401`   |
+| OAuth redirect     | Google callback ใช้ production HTTPS URL                       | Passed  |
+| Cookie baseline    | Session cookie เป็น HttpOnly, Secure, SameSite=Lax             | Passed  |
+| MCP auth boundary  | Missing และ invalid bearer token ที่ `POST /mcp`               | `401`   |
+| Network exposure   | API/Postgres ไม่มี domain หรือ TCP proxy                       | Passed  |
+| Custom domain      | Railway verified และ certificate valid                         | Passed  |
+| Request logging    | JSON มี request ID, method, path, status, duration             | Passed  |
+| Secret log scan    | ไม่พบ synthetic token, Authorization หรือ MCP session header   | Passed  |
+| Config drift       | API มี live `PORT`; IaC fix เป็น `3001`                        | Passed  |
+| Region placement   | Web, API และ Postgres อยู่ Singapore                           | Passed  |
+| Post-region deploy | Postgres, API และ Web deployment ใหม่                          | Success |
+| Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง              | Passed  |
+| Public bypass      | Railway-generated Web domain ถูกลบและตอบ `404`                 | Passed  |
+| Cloudflare TLS     | Owner ยืนยัน mode `Full`; HTTPS ตอบ `200` โดยไม่ redirect loop | Passed  |
 
 ## 2. Authenticated acceptance
 
@@ -94,7 +95,8 @@ destructive impact และยอมรับ downtime การตรวจห
 
 หลัง Board และ recovery checks ผ่านแล้วจึงลด bypass surface และปิด record
 
-- [ ] ยืนยัน Cloudflare SSL/TLS mode เป็น Full หรือ Full (Strict) และไม่มี redirect loop
+- [x] ยืนยัน Cloudflare SSL/TLS mode เป็น `Full` ตาม Railway guidance และไม่มี
+      redirect loop ห้ามใช้ `Flexible` หรือ `Full (Strict)`
 - [x] ลบ Railway-generated Web domain
       `web-production-4f560e.up.railway.app` หลัง Owner ยืนยัน exact domain
 - [x] ยืนยัน Web เหลือเฉพาะ custom domain `kanban.koonporza.com` และตอบ `200`

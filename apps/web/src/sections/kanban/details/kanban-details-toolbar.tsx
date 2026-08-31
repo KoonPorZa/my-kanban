@@ -21,7 +21,7 @@ type Props = BoxProps & {
   liked: boolean;
   taskName: string;
   taskStatus: string;
-  onDelete: () => void;
+  onArchive: () => void;
   onLikeToggle: () => void;
   onCloseDetails: () => void;
 };
@@ -30,7 +30,7 @@ export function KanbanDetailsToolbar({
   sx,
   liked,
   taskName,
-  onDelete,
+  onArchive,
   taskStatus,
   onLikeToggle,
   onCloseDetails,
@@ -76,15 +76,15 @@ export function KanbanDetailsToolbar({
     <ConfirmDialog
       open={confirmDialog.value}
       onClose={confirmDialog.onFalse}
-      title="Delete"
+      title="Archive task"
       content={
         <>
-          Are you sure want to delete <strong> {taskName} </strong>?
+          Archive <strong>{taskName}</strong>? The task will be removed from the active board.
         </>
       }
       action={
-        <Button variant="contained" color="error" onClick={onDelete}>
-          Delete
+        <Button variant="contained" color="warning" onClick={onArchive}>
+          Archive
         </Button>
       }
     />
@@ -130,11 +130,17 @@ export function KanbanDetailsToolbar({
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Delete task">
-            <IconButton onClick={confirmDialog.onTrue}>
-              <Iconify icon="solar:trash-bin-trash-bold" />
-            </IconButton>
-          </Tooltip>
+          <Button
+            size="small"
+            color="warning"
+            variant="soft"
+            aria-label="Archive task"
+            startIcon={<Iconify icon="solar:archive-down-minimlistic-bold" />}
+            onClick={confirmDialog.onTrue}
+            sx={{ ml: 0.5 }}
+          >
+            Archive
+          </Button>
 
           <IconButton>
             <Iconify icon="eva:more-vertical-fill" />
