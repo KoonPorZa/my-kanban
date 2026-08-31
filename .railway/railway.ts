@@ -1,4 +1,4 @@
-import { defineRailway, postgres, preserve, project, service } from 'railway/iac';
+import { defineRailway, github, postgres, preserve, project, service } from 'railway/iac';
 
 const PRODUCTION_ORIGIN = 'https://kanban.koonporza.com';
 const SINGAPORE_REGION = 'asia-southeast1-eqsg3a';
@@ -14,6 +14,7 @@ export default defineRailway((context) => {
   const database = postgres('Postgres', { region: SINGAPORE_REGION });
 
   const api = service('api', {
+    source: github('KoonPorZa/my-kanban', { branch: 'main', checkSuites: true }),
     build: {
       builder: 'RAILPACK',
       buildCommand: 'pnpm --filter @my-kanban/api build',
@@ -32,6 +33,7 @@ export default defineRailway((context) => {
     },
     env: {
       NODE_ENV: 'production',
+      PORT: '3001',
       APP_ORIGIN: PRODUCTION_ORIGIN,
       DATABASE_URL: database.env.DATABASE_URL,
       GOOGLE_CLIENT_ID: preserve(),
@@ -46,6 +48,7 @@ export default defineRailway((context) => {
   });
 
   const web = service('web', {
+    source: github('KoonPorZa/my-kanban', { branch: 'main', checkSuites: true }),
     build: {
       builder: 'RAILPACK',
       buildCommand: 'pnpm --filter @my-kanban/web build',

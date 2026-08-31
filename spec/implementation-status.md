@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.5
+version: 1.6
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -11,8 +11,9 @@ tags: [implementation, status, phase-0, kanban]
 
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
 August 31, 2026 Foundation, Google authentication, Board persistence,
-Project-scoped Remote MCP Phase 1A และ MVP release-readiness ผ่าน local automated
-verification แล้ว
+Project-scoped Remote MCP Phase 1A, MVP release-readiness และ production deploy
+ผ่าน automated verification ตามรายการด้านล่างแล้ว งาน credential-gated และ recovery
+ที่ยังค้างบันทึกไว้ใน `production-closeout.md`
 
 ## 1. Completed foundation
 
@@ -90,8 +91,8 @@ protocol/integration verification แล้ว
 
 ## 4. Completed MVP release readiness
 
-Release-readiness มี source-controlled configuration และ production safeguards แล้ว
-แต่ยังไม่ได้สร้างหรือเปลี่ยน Railway/Cloudflare resource จริง
+Release-readiness มี source-controlled configuration, production safeguards และ
+Railway/Cloudflare resources ที่ใช้งานจริงแล้ว
 
 - `.railway/railway.ts` กำหนด `web`, `api` และ `Postgres` เป็น Railway TypeScript
   Infrastructure as Code ในไฟล์เดียว
@@ -104,8 +105,8 @@ Release-readiness มี source-controlled configuration และ production sa
 - GitHub Actions รัน PostgreSQL 16 migrations, format, typecheck, lint, test และ build
   บน push/pull request ของ `develop` และ `main`
 - Root typecheck ตรวจ Railway IaC ด้วย official `railway` package
-- Railway CLI ถูกอัปเกรดเป็น `5.45.10`; repository ยังไม่ได้ link กับ Project จึงยัง
-  ไม่รัน external `railway config plan` หรือ apply
+- Railway CLI version `5.45.10` link กับ Project `my-kanban` และ environment
+  `production` แล้ว
 - Manual local MCP UI test ถูก defer ตามคำสั่งผู้ใช้และไม่ block phase นี้
 
 ## 5. Completed vertical slices
@@ -150,17 +151,27 @@ Foundation มี evidence ล่าสุดดังนี้
 | Direct `POST /mcp`, invalid token | `401`, MCP JSON-RPC error            |
 | Web proxy `POST /mcp`             | Preserves `401` and bearer challenge |
 | MCP protocol integration          | 7 cases passed against PostgreSQL    |
-| `railway config plan --json`      | Blocked only by no linked Project    |
+| Production Web root               | `200` over verified HTTPS            |
+| Production Web liveness           | `200`                                |
+| Production API unauthenticated    | `401` through same-origin proxy      |
+| Production MCP missing/invalid    | `401` through public Web proxy       |
+| Google OAuth production redirect  | Correct HTTPS callback               |
+| API/Postgres public exposure      | No domain and no TCP proxy           |
+| Production credential log scan    | No token/header pattern found        |
+| Railway deployment status         | Web, API, Postgres `SUCCESS`         |
 
 ## 7. Deployment status
 
-ยังไม่มีการ provision หรือแก้ไข Railway และ Cloudflare resource Local desired state
-พร้อมสำหรับ target topology ที่มี Railway `web`, `api` และ `Postgres` services โดย
-public domain มีเพียง `kanban.koonporza.com`
+Railway production มี `web`, `api` และ `Postgres` online โดย public custom domain มี
+เฉพาะ `kanban.koonporza.com` บน Web API และ PostgreSQL ไม่มี public domain/TCP
+proxy Certificate ของ custom domain valid และ Google login ผ่าน browser แล้ว
+
+Live drift ที่ต้องปิดก่อน Phase 2 คือ Postgres ยังอยู่ region `sfo` ขณะที่ Web/API
+อยู่ Singapore การย้าย volume ต้องทำหลังมี backup ที่ restore ได้และต้องยอมรับ downtime
+ห้าม apply IaC region diff โดยตรงกับ production database
 
 ## 8. Next steps
 
-สร้างหรือ link Railway Project, ตรวจ IaC plan, set sealed Google/session variables,
-เชื่อม `api` และ `web` กับ release commit บน `main`, deploy API ก่อน Web และเพิ่ม
-CNAME/TXT ที่ Railway คืนมาจริงใน Cloudflare จากนั้นรัน production login, Board,
-MCP, network, log และ backup smoke tests
+ปิด checklist ใน `production-closeout.md`: authenticated Board/MCP mutation smoke,
+token revoke/project isolation, backup schedule และ recovery point, isolated restore
+rehearsal และ Postgres region migration หลังจากนั้นจึงเริ่ม Phase 2: Scrum MVP

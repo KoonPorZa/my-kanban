@@ -7,10 +7,9 @@ TypeScript v7, local database migrations, health endpoints, and production
 builds. The current MVP also includes Project-scoped Remote MCP access for AI
 clients and a macOS helper CLI.
 
-> **Note:** This is a preview application under active development. Google
-> login, PostgreSQL-backed sessions, and owner-scoped Board API persistence are
-> locally verified together with the MCP vertical slice. Railway and Cloudflare
-> production deployment has not started yet.
+> **Note:** This is a preview application under active development. The MVP is
+> deployed at `https://kanban.koonporza.com` with Google login, PostgreSQL-backed
+> sessions, Board persistence, and the Project-scoped MCP endpoint enabled.
 
 ## Repository structure
 
@@ -86,7 +85,7 @@ secret appears only once when created; the database stores only its prefix and
 SHA-256 hash. Revocation takes effect on the next MCP request.
 
 The public client endpoint is `/mcp` on the Web service. Local clients use
-`http://localhost:8083/mcp`; production will use
+`http://localhost:8083/mcp`; production uses
 `https://kanban.koonporza.com/mcp`. The server exposes Project/Column reads and
 full Task create, read, update, move, archive, and restore access. It does not
 allow Project/Column mutation or hard delete. `create_tasks` accepts at most ten
@@ -153,11 +152,10 @@ Use these documents as the source of truth for product and technical decisions.
 
 ## Deployment boundary
 
-The target production topology is Railway `web`, `api`, and `Postgres` services,
-with `kanban.koonporza.com` on the Web service through Cloudflare. The desired
-state is defined in [the Railway IaC guide](./.railway/README.md), but no Railway
-project, service, database, domain, or Cloudflare record has been created or
-changed yet.
+The production topology is Railway `web`, `api`, and `Postgres` services, with
+`kanban.koonporza.com` on the Web service through Cloudflare. The desired state
+is defined in [the Railway IaC guide](./.railway/README.md). Only Web has a public
+domain; API and PostgreSQL remain private Railway services.
 
 The Remote MCP endpoint uses the same public Web domain at
 `https://kanban.koonporza.com/mcp`; the NestJS API and PostgreSQL remain private
@@ -166,9 +164,7 @@ for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-Create or link the production Railway project, review the IaC plan, set sealed
-Google/session variables, and connect the Web and API services to `main`. Then
-deploy API and Web, add the Railway-provided CNAME/TXT records to Cloudflare,
-and run the production login, Board, MCP, network, log, and backup smoke checks.
-The remaining manual local MCP UI test is deferred and does not block this
-release-readiness phase.
+Finish the credential-gated Board/MCP acceptance checks, establish a verified
+backup and restore rehearsal, and resolve the Postgres region drift before
+starting Phase 2. Current evidence and the exact remaining gates are recorded in
+[the production closeout record](./spec/production-closeout.md).
