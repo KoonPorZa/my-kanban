@@ -33,15 +33,18 @@ The IaC file manages the following non-secret desired state.
 - It checks Web at `/health/live` and API at `/health/ready`.
 - It places one production replica of each application in Singapore.
 - It references PostgreSQL and the API through Railway private networking.
+- It fixes the private API port at `3001` so the Web rewrite resolves reliably.
 - It preserves Google OAuth, email allowlist, and session secrets already held
   by Railway.
+- It keeps both application services connected to `KoonPorZa/my-kanban` on
+  `main` and waits for GitHub checks.
 - It intentionally omits the custom domain because Railway rejects domain
   registration from TypeScript IaC.
 
-The file intentionally omits a GitHub source. This prevents the first
-infrastructure apply from deploying an application before required secrets are
-set. Connect both services to `KoonPorZa/my-kanban` on `main` only after the
-variables are complete.
+The GitHub source is now part of desired state because production secrets are
+complete and both services already deploy from `main`. For a fresh project, set
+the sealed variables before the first apply or temporarily remove the source
+entries during bootstrap.
 
 ## Production workflow
 
@@ -66,5 +69,8 @@ Use this sequence from a release commit on `main`.
 
 ## Next steps
 
-Create or link the production Railway project, review the first IaC plan, and
-set sealed variables before connecting either service to GitHub.
+Production is provisioned and connected to `main`. Before Phase 2, complete the
+credential-gated checks and recovery actions in
+[`spec/production-closeout.md`](../spec/production-closeout.md). Do not apply a
+Postgres region change until a restorable backup exists and the downtime window
+has been accepted.
