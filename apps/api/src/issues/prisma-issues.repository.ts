@@ -9,6 +9,7 @@ import {
 } from '../common/domain/domain-errors';
 import { rankForPosition, rebalancedRanks } from '../common/domain/rank';
 import { IssuesRepository } from './issues.repository';
+import type { TaskListFilter } from './issues.repository';
 import type { MoveIssueDto, CreateIssueDto, UpdateIssueDto } from './dto/issue-mutation.dto';
 
 const issueSelect = {
@@ -39,13 +40,89 @@ export class PrismaIssuesRepository extends IssuesRepository {
   }
 
   async create(ownerId: string, projectId: string, input: CreateIssueDto) {
+    return this.prisma.$transaction((transaction) =>
+      this.createWithTransaction(transaction, ownerId, projectId, input)
+    );
+  }
+
+  async createMany(ownerId: string, projectId: string, inputs: CreateIssueDto[]) {
     return this.prisma.$transaction(async (transaction) => {
+      const created = [];
+      for (const input of inputs) {
+        created.push(await this.createWithTransaction(transaction, ownerId, projectId, input));
+      }
+      return created;
+    });
+  }
+
+  async getForProject(projectId: string, issueId: string, includeArchived = false) {
+    const issue = await this.prisma.issue.findFirst({
+      where: {
+        id: issueId,
+        projectId,
+        project: { archivedAt: null },
+        ...(!includeArchived && { archivedAt: null }),
+      },
+      select: issueSelect,
+    });
+    if (!issue) throw new ResourceNotFoundError('Task');
+    return this.toDto(issue);
+  }
+
+  async listForProject(projectId: string, filter: TaskListFilter) {
+    const pageSize = filter.pageSize ?? 50;
+    const archivedAt =
+      filter.archived === 'all' ? undefined : filter.archived === 'archived' ? { not: null } : null;
+    const issues = await this.prisma.issue.findMany({
+      where: {
+        projectId,
+        project: { archivedAt: null },
+        ...(archivedAt !== undefined && { archivedAt }),
+        ...(filter.columnId && { columnId: filter.columnId }),
+        ...(filter.priority && {
+          priority: filter.priority as 'urgent' | 'high' | 'medium' | 'low' | 'none',
+        }),
+        ...(filter.query && {
+          OR: [
+            { title: { contains: filter.query, mode: 'insensitive' } },
+            { description: { contains: filter.query, mode: 'insensitive' } },
+          ],
+        }),
+      },
+      select: issueSelect,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: pageSize + 1,
+      ...(filter.cursor && { cursor: { id: filter.cursor }, skip: 1 }),
+    });
+    const hasNext = issues.length > pageSize;
+    const page = hasNext ? issues.slice(0, pageSize) : issues;
+    return {
+      tasks: page.map((issue) => this.toDto(issue)),
+      nextCursor: hasNext ? (page.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  async restoreForProject(
+    projectId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string,
+    beforeIssueId?: string,
+    afterIssueId?: string
+  ) {
+    return this.prisma.$transaction(async (transaction) => {
+      const issue = await transaction.issue.findFirst({
+        where: { id: issueId, projectId, archivedAt: { not: null }, project: { archivedAt: null } },
+      });
+      if (!issue) throw new ResourceNotFoundError('Task');
+      if (issue.version !== version) throw new VersionConflictError('Task');
+
       const column = await transaction.boardColumn.findFirst({
         where: {
-          id: input.columnId,
+          id: targetColumnId ?? issue.columnId,
           projectId,
           archivedAt: null,
-          project: { archivedAt: null, workspace: { ownerId } },
+          project: { archivedAt: null },
         },
         select: { id: true, category: true },
       });
@@ -55,30 +132,71 @@ export class PrismaIssuesRepository extends IssuesRepository {
         transaction,
         column.id,
         undefined,
-        input.beforeIssueId,
-        input.afterIssueId
+        beforeIssueId,
+        afterIssueId
       );
-      const issue = await transaction.issue.create({
+      const result = await transaction.issue.updateMany({
+        where: { id: issue.id, projectId, version, archivedAt: { not: null } },
         data: {
-          projectId,
           columnId: column.id,
-          title: input.title,
-          description: input.description ?? '',
-          type: input.type ?? 'task',
-          priority: input.priority ?? 'medium',
-          labels: input.labels ?? [],
-          storyPoints: input.storyPoints,
-          dueDate: input.dueDate ? new Date(input.dueDate) : null,
-          isBlocked: input.isBlocked ?? false,
-          blockedReason: input.blockedReason?.trim() || null,
-          completedAt: column.category === 'done' ? new Date() : null,
           rank,
+          archivedAt: null,
+          completedAt: column.category === 'done' ? (issue.completedAt ?? new Date()) : null,
+          version: { increment: 1 },
         },
-        select: issueSelect,
       });
+      if (result.count !== 1) throw new VersionConflictError('Task');
 
-      return this.toDto(issue);
+      return this.toDto(
+        await transaction.issue.findUniqueOrThrow({ where: { id: issue.id }, select: issueSelect })
+      );
     });
+  }
+
+  private async createWithTransaction(
+    transaction: Prisma.TransactionClient,
+    ownerId: string,
+    projectId: string,
+    input: CreateIssueDto
+  ) {
+    const column = await transaction.boardColumn.findFirst({
+      where: {
+        id: input.columnId,
+        projectId,
+        archivedAt: null,
+        project: { archivedAt: null, workspace: { ownerId } },
+      },
+      select: { id: true, category: true },
+    });
+    if (!column) throw new ResourceNotFoundError('Column');
+
+    const rank = await this.resolveRank(
+      transaction,
+      column.id,
+      undefined,
+      input.beforeIssueId,
+      input.afterIssueId
+    );
+    const issue = await transaction.issue.create({
+      data: {
+        projectId,
+        columnId: column.id,
+        title: input.title,
+        description: input.description ?? '',
+        type: input.type ?? 'task',
+        priority: input.priority ?? 'medium',
+        labels: input.labels ?? [],
+        storyPoints: input.storyPoints,
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        isBlocked: input.isBlocked ?? false,
+        blockedReason: input.blockedReason?.trim() || null,
+        completedAt: column.category === 'done' ? new Date() : null,
+        rank,
+      },
+      select: issueSelect,
+    });
+
+    return this.toDto(issue);
   }
 
   async update(ownerId: string, issueId: string, input: UpdateIssueDto) {

@@ -10,6 +10,7 @@
     "dev": "pnpm -r --parallel --if-present dev",
     "dev:web": "pnpm --filter @my-kanban/web dev",
     "dev:api": "pnpm --filter @my-kanban/api dev",
+    "cli:build": "pnpm --filter @my-kanban/cli build",
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",

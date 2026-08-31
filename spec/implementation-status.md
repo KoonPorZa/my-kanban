@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.3
+version: 1.4
 date_created: 2026-08-31
 last_updated: 2026-08-31
 owner: Product owner
@@ -10,14 +10,14 @@ tags: [implementation, status, phase-0, kanban]
 # Introduction
 
 เอกสารนี้บันทึกสถานะ implementation เทียบกับ PRD และ specifications ณ วันที่
-August 31, 2026 Foundation, Google authentication และ Board API persistence ผ่าน
-local verification แล้ว Remote MCP requirements ได้รับอนุมัติแล้วและเป็น phase ถัดไป
+August 31, 2026 Foundation, Google authentication, Board persistence และ
+Project-scoped Remote MCP Phase 1A ผ่าน local automated verification แล้ว
 
 ## 1. Completed foundation
 
 รายการต่อไปนี้มี implementation และ verification ใน local workspace แล้ว
 
-- pnpm workspace มี `apps/web`, `apps/api`, `packages/api-client` และ
+- pnpm workspace มี `apps/web`, `apps/api`, `apps/cli`, `packages/api-client` และ
   `packages/config`
 - Next.js starter อยู่ใน `apps/web` และ production build ผ่าน
 - Kanban board จาก
@@ -61,24 +61,33 @@ Temporary local adapter ถูกแทนด้วย API-backed adapter แล
 Surface สำหรับ assignee, comment และ attachment ถูกตัดออกตามขอบเขต single-user MVP
 ส่วน priority, label, description, checklist และ drag-and-drop ยังอยู่ใน UI baseline
 
-## 3. Approved MCP requirements
+## 3. Completed MCP Phase 1A
 
-MCP scope ถูก crystallize แล้วใน specification แยก แต่ยังไม่มี schema, endpoint, UI
-หรือ helper CLI implementation
+MCP vertical slice มี implementation บน `feature/mcp-task-access` และผ่าน local
+protocol/integration verification แล้ว
 
 - Production endpoint ใช้ Streamable HTTP ที่
   `https://kanban.koonporza.com/mcp` ผ่าน Web proxy ไป private NestJS API
+- NestJS ใช้ official `@modelcontextprotocol/sdk` version `1.30.0` และสร้าง transport
+  แยกต่อ MCP session
 - Access token หนึ่งรายการผูก Project เดียว, อายุคงที่ 90 วัน, แสดง raw token ครั้งเดียว
   และ revoke แยกรายการได้
+- Prisma migration เพิ่ม `mcp_access_tokens`, `mutation_idempotency` และ
+  `mcp_audit_events`; raw token ไม่ถูก persist
 - MCP อ่าน Project/Columns และทำ Task read/create/update/move/archive/restore ได้ แต่
   แก้ Project/Columns หรือ hard delete ไม่ได้
 - `create_tasks` รับได้ไม่เกิน 10 รายการและทำงานแบบ atomic; mutation อื่นทำทีละ Task
 - Mutation ใช้ version check, idempotency key และ audit log ทุกครั้ง
+- Web มีหน้า `/dashboard/mcp-access` สำหรับสร้าง token, แสดง secret ครั้งเดียว, list,
+  revoke และดู audit events
+- Web `/mcp` proxy ส่ง bearer, MCP protocol และ session headers ไป private API
 - Board refetch ทุก 15 วินาทีและเมื่อ browser กลับมา focus
 - macOS helper CLI `kanban` เก็บ token ใน Keychain และเปิด Codex/Claude session แบบ
   Project-scoped โดยไม่ผูก Git repository
+- MCP session revalidate bearer token ทุก request, lock token ต่อ session, ตรวจ Origin,
+  rate limit 60 requests/minute และ prune idle session หลังหนึ่งชั่วโมง
 
-## 4. Completed Board persistence slice
+## 4. Completed vertical slices
 
 งานต่อไปนี้เสร็จและผ่าน automated verification แล้ว
 
@@ -86,31 +95,38 @@ MCP scope ถูก crystallize แล้วใน specification แยก แ�
 2. สร้าง OpenAPI artifact และ Orval Axios/TanStack Query client
 3. เปลี่ยน temporary local adapter เป็น API persistence พร้อม optimistic rollback
 4. เพิ่ม PostgreSQL integration tests และ Supertest HTTP tests
+5. เพิ่ม Project-token REST API, generated Orval client และ management UI
+6. เพิ่ม Streamable HTTP MCP adapter ที่ reuse Boards/Issues services
+7. เพิ่ม idempotency reservation, atomic batch และ mutation audit trail
+8. เพิ่ม Web proxy และ macOS Keychain helper CLI
 
-Authenticated browser smoke ยังไม่ได้รันซ้ำใน execution environment นี้เพราะไม่มี
-browser runtime ให้ attach แต่ production build และ HTTP-level behavior ผ่านแล้ว
+Authenticated browser smoke ของหน้า MCP access และ manual Codex/Claude launch ยังไม่
+ได้รันใน execution environment นี้ Automated protocol tests และ HTTP proxy smoke ผ่านแล้ว
 
 ## 5. Verification record
 
 Foundation มี evidence ล่าสุดดังนี้
 
-| Check                            | Result                              |
-| -------------------------------- | ----------------------------------- |
-| `corepack pnpm typecheck`        | Passed                              |
-| `corepack pnpm lint`             | Passed                              |
-| `corepack pnpm test`             | Passed; API 14 and Web 1 test       |
-| `corepack pnpm build`            | Passed for Web, API, and API client |
-| `corepack pnpm api:generate`     | Passed; deterministic output        |
-| `corepack pnpm format:check`     | Passed                              |
-| `prisma validate`                | Passed                              |
-| `prisma migrate deploy`          | Passed; 2 migrations, none pending  |
-| `GET /health/live`               | `200 {"status":"ok"}`               |
-| `GET /health/ready`              | `200 {"status":"ready"}`            |
-| Swagger JSON                     | Served from `/api/docs-json`        |
-| `GET /api/v1/me` without session | `401`                               |
-| `GET /api/v1/auth/google`        | `302` with state and nonce          |
-| Google callback in browser       | Passed with allowed account         |
-| Authenticated profile UI         | Displays Google name/email/avatar   |
+| Check                             | Result                               |
+| --------------------------------- | ------------------------------------ |
+| `corepack pnpm typecheck`         | Passed                               |
+| `corepack pnpm lint`              | Passed                               |
+| `corepack pnpm test`              | Passed; API 21, Web 2, CLI 3 tests   |
+| `corepack pnpm build`             | Passed for Web, API, client, and CLI |
+| `corepack pnpm api:generate`      | Passed; deterministic output         |
+| `corepack pnpm format:check`      | Passed                               |
+| `prisma validate`                 | Passed                               |
+| `prisma migrate deploy`           | Passed; 3 migrations, none pending   |
+| `GET /health/live`                | `200 {"status":"ok"}`                |
+| `GET /health/ready`               | `200 {"status":"ready"}`             |
+| Swagger JSON                      | Served from `/api/docs-json`         |
+| `GET /api/v1/me` without session  | `401`                                |
+| `GET /api/v1/auth/google`         | `302` with state and nonce           |
+| Google callback in browser        | Passed with allowed account          |
+| Authenticated profile UI          | Displays Google name/email/avatar    |
+| Direct `POST /mcp`, invalid token | `401`, MCP JSON-RPC error            |
+| Web proxy `POST /mcp`             | Preserves `401` and bearer challenge |
+| MCP protocol integration          | 7 cases passed against PostgreSQL    |
 
 ## 6. Deployment status
 
@@ -120,7 +136,6 @@ Foundation มี evidence ล่าสุดดังนี้
 
 ## 7. Next steps
 
-เริ่ม Phase 1A ด้วย MCP token/schema/audit migration แล้วเพิ่ม Streamable HTTP adapter
-ที่ reuse Board และ Issues application services ชุดปัจจุบัน จากนั้นทำ Project-token UI,
-Web `/mcp` proxy และ macOS helper CLI เมื่อ local MCP acceptance tests ผ่านจึงเริ่ม
-Railway deployment ตามคำสั่งผู้ใช้
+รัน authenticated browser smoke ของ MCP access UI และ manual helper smoke กับ Codex
+และ Claude Code โดยใช้ local endpoint จากนั้นเตรียม Railway environment variables,
+deploy migration/Web/private API/PostgreSQL และผูก Cloudflare domain ตามคำสั่งผู้ใช้

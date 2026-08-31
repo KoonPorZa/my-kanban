@@ -33,14 +33,32 @@ enum IssueType {
   chore
 }
 
+enum McpClientType {
+  codex
+  claude
+  other
+}
+
+enum IdempotencyActorType {
+  user
+  mcp_token
+}
+
+enum McpAuditOutcome {
+  success
+  rejected
+  failed
+}
+
 model User {
-  id          String         @id @default(uuid()) @db.Uuid
-  displayName String         @map("display_name") @db.VarChar(120)
-  avatarUrl   String?        @map("avatar_url")
+  id          String           @id @default(uuid()) @db.Uuid
+  displayName String           @map("display_name") @db.VarChar(120)
+  avatarUrl   String?          @map("avatar_url")
   identities  AuthIdentity[]
   workspaces  Workspace[]
-  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  mcpTokens   McpAccessToken[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
 }
@@ -87,18 +105,21 @@ model Workspace {
 }
 
 model Project {
-  id          String        @id @default(uuid()) @db.Uuid
-  workspaceId String        @map("workspace_id") @db.Uuid
-  name        String        @db.VarChar(120)
-  color       String        @default("primary") @db.VarChar(32)
-  mode        ProjectMode   @default(kanban)
-  version     Int           @default(1)
-  archivedAt  DateTime?     @map("archived_at") @db.Timestamptz(6)
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id          String                @id @default(uuid()) @db.Uuid
+  workspaceId String                @map("workspace_id") @db.Uuid
+  name        String                @db.VarChar(120)
+  color       String                @default("primary") @db.VarChar(32)
+  mode        ProjectMode           @default(kanban)
+  version     Int                   @default(1)
+  archivedAt  DateTime?             @map("archived_at") @db.Timestamptz(6)
+  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   columns     BoardColumn[]
   issues      Issue[]
-  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  mcpTokens   McpAccessToken[]
+  idempotency MutationIdempotency[]
+  auditEvents McpAuditEvent[]
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([workspaceId, archivedAt])
   @@map("projects")
@@ -124,29 +145,93 @@ model BoardColumn {
 }
 
 model Issue {
-  id            String        @id @default(uuid()) @db.Uuid
-  projectId     String        @map("project_id") @db.Uuid
-  columnId      String        @map("column_id") @db.Uuid
-  title         String        @db.VarChar(200)
-  description   String        @default("")
-  type          IssueType     @default(task)
-  priority      IssuePriority @default(medium)
+  id            String          @id @default(uuid()) @db.Uuid
+  projectId     String          @map("project_id") @db.Uuid
+  columnId      String          @map("column_id") @db.Uuid
+  title         String          @db.VarChar(200)
+  description   String          @default("")
+  type          IssueType       @default(task)
+  priority      IssuePriority   @default(medium)
   labels        String[]
-  storyPoints   Int?          @map("story_points")
+  storyPoints   Int?            @map("story_points")
   rank          BigInt
-  version       Int           @default(1)
-  dueDate       DateTime?     @map("due_date") @db.Timestamptz(6)
-  isBlocked     Boolean       @default(false) @map("is_blocked")
-  blockedReason String?       @map("blocked_reason")
-  archivedAt    DateTime?     @map("archived_at") @db.Timestamptz(6)
-  completedAt   DateTime?     @map("completed_at") @db.Timestamptz(6)
-  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  column        BoardColumn   @relation(fields: [columnId], references: [id], onDelete: Restrict)
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version       Int             @default(1)
+  dueDate       DateTime?       @map("due_date") @db.Timestamptz(6)
+  isBlocked     Boolean         @default(false) @map("is_blocked")
+  blockedReason String?         @map("blocked_reason")
+  archivedAt    DateTime?       @map("archived_at") @db.Timestamptz(6)
+  completedAt   DateTime?       @map("completed_at") @db.Timestamptz(6)
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column        BoardColumn     @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  auditEvents   McpAuditEvent[]
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([columnId, rank])
   @@index([projectId, archivedAt, columnId, rank])
   @@index([projectId, dueDate])
   @@map("issues")
+}
+
+model McpAccessToken {
+  id          String          @id @default(uuid()) @db.Uuid
+  projectId   String          @map("project_id") @db.Uuid
+  createdById String          @map("created_by_id") @db.Uuid
+  label       String          @db.VarChar(80)
+  clientType  McpClientType   @map("client_type")
+  tokenPrefix String          @unique @map("token_prefix") @db.VarChar(24)
+  tokenHash   String          @unique @map("token_hash") @db.VarChar(128)
+  expiresAt   DateTime        @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt  DateTime?       @map("last_used_at") @db.Timestamptz(6)
+  revokedAt   DateTime?       @map("revoked_at") @db.Timestamptz(6)
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  auditEvents McpAuditEvent[]
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([projectId, revokedAt, expiresAt])
+  @@index([createdById])
+  @@map("mcp_access_tokens")
+}
+
+model MutationIdempotency {
+  id                 String               @id @default(uuid()) @db.Uuid
+  projectId          String               @map("project_id") @db.Uuid
+  actorType          IdempotencyActorType @map("actor_type")
+  actorId            String               @map("actor_id") @db.Uuid
+  operation          String               @db.VarChar(80)
+  idempotencyKey     String               @map("idempotency_key") @db.VarChar(128)
+  requestFingerprint String               @map("request_fingerprint") @db.VarChar(128)
+  responseStatus     Int                  @map("response_status")
+  responseBody       Json                 @map("response_body")
+  expiresAt          DateTime             @map("expires_at") @db.Timestamptz(6)
+  project            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([projectId, actorType, actorId, operation, idempotencyKey])
+  @@index([expiresAt])
+  @@map("mutation_idempotency")
+}
+
+model McpAuditEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  projectId      String          @map("project_id") @db.Uuid
+  tokenId        String          @map("token_id") @db.Uuid
+  issueId        String?         @map("issue_id") @db.Uuid
+  toolName       String          @map("tool_name") @db.VarChar(80)
+  requestId      String          @map("request_id") @db.VarChar(128)
+  idempotencyKey String?         @map("idempotency_key") @db.VarChar(128)
+  outcome        McpAuditOutcome
+  changedFields  String[]        @default([]) @map("changed_fields")
+  errorCode      String?         @map("error_code") @db.VarChar(80)
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  token          McpAccessToken  @relation(fields: [tokenId], references: [id], onDelete: Restrict)
+  issue          Issue?          @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId, createdAt])
+  @@index([tokenId, createdAt])
+  @@index([issueId])
+  @@map("mcp_audit_events")
 }

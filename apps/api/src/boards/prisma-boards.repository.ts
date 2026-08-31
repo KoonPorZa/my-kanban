@@ -48,8 +48,16 @@ export class PrismaBoardsRepository extends BoardsRepository {
   }
 
   async get(ownerId: string, projectId: string) {
+    return this.getScoped(projectId, ownerId);
+  }
+
+  async getForProject(projectId: string) {
+    return this.getScoped(projectId);
+  }
+
+  private async getScoped(projectId: string, ownerId?: string) {
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, archivedAt: null, workspace: { ownerId } },
+      where: { id: projectId, archivedAt: null, ...(ownerId && { workspace: { ownerId } }) },
       select: {
         id: true,
         name: true,

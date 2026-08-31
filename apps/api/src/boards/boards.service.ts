@@ -12,6 +12,10 @@ export class BoardsService {
     return this.boards.get(ownerId, projectId);
   }
 
+  getForProject(projectId: string) {
+    return this.boards.getForProject(projectId);
+  }
+
   createColumn(ownerId: string, projectId: string, input: CreateColumnDto) {
     return this.boards.createColumn(ownerId, projectId, {
       ...input,

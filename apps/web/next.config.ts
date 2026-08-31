@@ -20,6 +20,7 @@ const isStaticExport = false;
 const nextConfig: NextConfig = {
   transpilePackages: ['@my-kanban/api-client'],
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
   output: isStaticExport ? 'export' : undefined,
   env: {
     BUILD_STATIC_EXPORT: JSON.stringify(isStaticExport),
