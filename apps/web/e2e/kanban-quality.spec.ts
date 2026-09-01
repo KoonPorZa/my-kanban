@@ -140,7 +140,7 @@ test('explicit move updates the visible column in under 100ms while the response
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
-        button.click();
+        (button as HTMLButtonElement).click();
       })
   );
 
