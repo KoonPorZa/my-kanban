@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -13,6 +24,7 @@ import { CreateIssueDto } from '../issues/dto/issue-mutation.dto';
 import { IssueResponseDto } from '../issues/dto/issue-response.dto';
 import {
   CompleteSprintDto,
+  BulkSprintIssuesDto,
   CreateSprintDto,
   SprintIssueDto,
   VersionedSprintCommandDto,
@@ -58,6 +70,22 @@ export class SprintsController {
     @Body() input: SprintIssueDto
   ) {
     return this.sprints.addIssue(user.userId, sprintId, input.issueId);
+  }
+
+  @Post('sprints/:sprintId/issues/bulk')
+  @ApiOperation({
+    operationId: 'bulkAddIssuesToSprint',
+    summary: 'Assign multiple tasks to a Sprint atomically',
+  })
+  @ApiParam({ name: 'sprintId', schema: { type: 'string', format: 'uuid' } })
+  @ApiOkResponse({ type: SprintResponseDto })
+  @HttpCode(HttpStatus.OK)
+  bulkAddIssues(
+    @CurrentUser() user: SessionPrincipal,
+    @Param('sprintId', ParseUUIDPipe) sprintId: string,
+    @Body() input: BulkSprintIssuesDto
+  ) {
+    return this.sprints.bulkAddIssues(user.userId, sprintId, input.issueIds);
   }
 
   @Post('sprints/:sprintId/issues/create')

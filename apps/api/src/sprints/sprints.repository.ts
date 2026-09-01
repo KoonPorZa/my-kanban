@@ -14,6 +14,12 @@ export abstract class SprintsRepository {
 
   abstract addIssue(ownerId: string, sprintId: string, issueId: string): Promise<SprintResponseDto>;
 
+  abstract bulkAddIssues(
+    ownerId: string,
+    sprintId: string,
+    issueIds: string[]
+  ): Promise<SprintResponseDto>;
+
   abstract createIssue(
     ownerId: string,
     sprintId: string,

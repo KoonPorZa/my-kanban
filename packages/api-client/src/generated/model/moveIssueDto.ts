@@ -14,4 +14,6 @@ export interface MoveIssueDto {
   sprintId?: string;
   beforeIssueId?: string;
   afterIssueId?: string;
+  /** Explicitly allow moving a task with unfinished checklist items to Done */
+  allowIncompleteChecklist?: boolean;
 }

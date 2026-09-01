@@ -7,9 +7,11 @@ TypeScript v7, local database migrations, health endpoints, and production
 builds. The current MVP also includes Project-scoped Remote MCP access for AI
 clients and a macOS helper CLI.
 
-> **Note:** This is a preview application under active development. The MVP is
-> deployed at `https://kanban.koonporza.com` with Google login, PostgreSQL-backed
-> sessions, Board persistence, and the Project-scoped MCP endpoint enabled.
+> **Note:** The current production preview at `https://kanban.koonporza.com`
+> includes Google login, PostgreSQL-backed sessions, Board persistence, and the
+> Project-scoped MCP endpoint. Phase 3 MVP completion is verified locally on the
+> feature branch and is not deployed until authenticated acceptance and Gitflow
+> release approval pass.
 
 ## Repository structure
 
@@ -149,6 +151,7 @@ Use these documents as the source of truth for product and technical decisions.
 - [Railway deployment specification](./spec/spec-infrastructure-railway-deployment.md)
 - [MCP task management specification](./spec/spec-integration-mcp-task-management.md)
 - [Implementation status](./spec/implementation-status.md)
+- [MVP validation matrix](./spec/mvp-validation-matrix.md)
 
 ## Deployment boundary
 
@@ -166,11 +169,11 @@ for each Codex CLI or Claude Code session without binding to Git.
 
 ## Next steps
 
-The pre-Phase-2 production gate is complete. Phase 2 Scrum planning, Active
-Sprint Board, Story Points, completion snapshots, history, and velocity are now
-implemented and pass automated local verification. Authenticated browser
-acceptance is the remaining gate before the feature is merged to `develop` and
-released through Gitflow. Production MCP acceptance remains deferred until the
-mutation, revocation, and Project isolation checks pass. PostgreSQL, API, and Web
-run in Singapore. The current plan's backup limitation and Owner waiver are
-recorded in [the production closeout record](./spec/production-closeout.md).
+Phase 3 now completes the local MVP implementation: Project lifecycle, complete
+Task/checklist editing, sortable Scrum Backlog, WIP and workflow invariants,
+search/filter/Focus, per-Project Done retention, mobile and keyboard access,
+Workspace export/import, recovery, delayed permanent deletion, and corrupt-record
+isolation. Automated tests, browser quality gates, migrations, generated client,
+and production builds pass. The remaining gate is the Google-authenticated local
+checklist in [the MVP validation matrix](./spec/mvp-validation-matrix.md), followed
+by Gitflow release approval. Production MCP manual acceptance remains deferred.

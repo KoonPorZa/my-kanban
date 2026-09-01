@@ -30,6 +30,11 @@ export class SprintsService {
     return this.sprints.addIssue(ownerId, sprintId, issueId);
   }
 
+  bulkAddIssues(ownerId: string, sprintId: string, issueIds: string[]) {
+    if (issueIds.length === 0) throw new DomainValidationError('Select at least one task');
+    return this.sprints.bulkAddIssues(ownerId, sprintId, issueIds);
+  }
+
   createIssue(ownerId: string, sprintId: string, input: CreateIssueDto) {
     return this.sprints.createIssue(ownerId, sprintId, input);
   }

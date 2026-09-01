@@ -13,6 +13,7 @@ import {
   IsUUID,
   MaxLength,
   ArrayMaxSize,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 
@@ -29,6 +30,24 @@ export enum TaskType {
   story = 'story',
   bug = 'bug',
   chore = 'chore',
+}
+
+export class ChecklistItemInputDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @ApiProperty({ maxLength: 300 })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  title!: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isCompleted?: boolean;
 }
 
 export class CreateIssueDto {
@@ -90,6 +109,14 @@ export class CreateIssueDto {
   @MaxLength(500)
   blockedReason?: string | null;
 
+  @ApiPropertyOptional({ type: [ChecklistItemInputDto], maxItems: 100 })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ChecklistItemInputDto)
+  checklist?: ChecklistItemInputDto[];
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
@@ -143,6 +170,14 @@ export class MoveIssueDto {
   @IsOptional()
   @IsUUID()
   afterIssueId?: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Explicitly allow moving a task with unfinished checklist items to Done',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowIncompleteChecklist?: boolean;
 }
 
 export class VersionedIssueCommandDto {
@@ -151,4 +186,28 @@ export class VersionedIssueCommandDto {
   @IsInt()
   @Min(1)
   version!: number;
+}
+
+export class DuplicateIssueDto extends VersionedIssueCommandDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  targetColumnId?: string;
+}
+
+export class RestoreIssueDto extends VersionedIssueCommandDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  targetColumnId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  beforeIssueId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  afterIssueId?: string;
 }

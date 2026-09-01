@@ -6,11 +6,11 @@
  * OpenAPI spec version: 1.0
  */
 
-export type UpdateProjectModeDtoMode =
-  (typeof UpdateProjectModeDtoMode)[keyof typeof UpdateProjectModeDtoMode];
+export type PreviewWorkspaceImportBodyMode =
+  (typeof PreviewWorkspaceImportBodyMode)[keyof typeof PreviewWorkspaceImportBodyMode];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const UpdateProjectModeDtoMode = {
-  kanban: 'kanban',
-  scrum: 'scrum',
+export const PreviewWorkspaceImportBodyMode = {
+  replace: 'replace',
+  merge: 'merge',
 } as const;

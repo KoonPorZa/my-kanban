@@ -15,6 +15,8 @@ import {
   createIssue,
   updateIssue,
   archiveIssue,
+  restoreIssue,
+  duplicateIssue,
   useListSprints,
   useListProjects,
   createIssueInSprint,
@@ -31,11 +33,14 @@ import {
 
 import { getQueryClient } from 'src/lib/query-client';
 
+import { partitionBoardIssues } from './kanban-board-resilience';
+
 const emptyBoard: IKanban = {
   projectId: '',
   projectName: '',
   columns: [],
   tasks: {},
+  skippedIssueCount: 0,
 };
 
 function toKanbanTask(issue: IssueResponseDto, status: string): IKanbanTask {
@@ -46,7 +51,16 @@ function toKanbanTask(issue: IssueResponseDto, status: string): IKanbanTask {
     storyPoints: issue.storyPoints,
     name: issue.title,
     status,
+    type: issue.type,
     priority: issue.priority,
+    dueDate: issue.dueDate,
+    isBlocked: issue.isBlocked,
+    blockedReason: issue.blockedReason,
+    checklist: issue.checklist,
+    checklistIncompleteCount: issue.checklistIncompleteCount,
+    completedAt: issue.completedAt,
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
     description: issue.description,
     attachments: [],
     labels: issue.labels,
@@ -59,12 +73,17 @@ function toKanbanTask(issue: IssueResponseDto, status: string): IKanbanTask {
 
 function toKanban(board: BoardResponseDto, sprintId?: string | null): IKanban {
   const tasks: IKanban['tasks'] = {};
+  const { validIssues, skippedIssueCount } = partitionBoardIssues({
+    issues: board.issues,
+    projectId: board.project.id,
+    columnIds: new Set(board.columns.map((column) => column.id)),
+  });
   const visibleIssues =
     sprintId === undefined
-      ? board.issues
+      ? validIssues
       : sprintId === null
         ? []
-        : board.issues.filter((issue) => issue.sprintId === sprintId);
+        : validIssues.filter((issue) => issue.sprintId === sprintId);
 
   for (const column of board.columns) {
     tasks[column.id] = visibleIssues
@@ -77,6 +96,7 @@ function toKanban(board: BoardResponseDto, sprintId?: string | null): IKanban {
     projectName: board.project.name,
     columns: board.columns,
     tasks,
+    skippedIssueCount,
   };
 }
 
@@ -127,7 +147,7 @@ export function useGetBoard() {
   const isScrum = project?.mode === 'scrum';
   const sprintsQuery = useListSprints(projectId, {
     query: {
-      enabled: Boolean(projectId) && isScrum,
+      enabled: Boolean(projectId),
       refetchInterval: 15_000,
       refetchOnWindowFocus: true,
     },
@@ -150,7 +170,9 @@ export function useGetBoard() {
   return {
     board,
     projectMode: project?.mode ?? 'kanban',
+    doneRetentionDays: project?.doneRetentionDays ?? 30,
     activeSprint: activeSprint ?? null,
+    sprintOptions: (sprintsQuery.data?.sprints ?? []).map(({ id, name }) => ({ id, name })),
     boardLoading:
       projectsQuery.isLoading || boardQuery.isLoading || (isScrum && sprintsQuery.isLoading),
     boardError: projectsQuery.error ?? boardQuery.error ?? sprintsQuery.error,
@@ -187,14 +209,19 @@ export async function createColumn(projectId: string, columnData: IKanbanColumn)
   );
 }
 
-export async function updateColumn(projectId: string, column: IKanbanColumn, name: string) {
+export async function updateColumn(
+  projectId: string,
+  column: IKanbanColumn,
+  changes: string | { name?: string; wipLimit?: number | null }
+) {
+  const data = typeof changes === 'string' ? { name: changes } : changes;
   return optimisticMutation(
     projectId,
     (board) => ({
       ...board,
-      columns: board.columns.map((item) => (item.id === column.id ? { ...item, name } : item)),
+      columns: board.columns.map((item) => (item.id === column.id ? { ...item, ...data } : item)),
     }),
-    () => updateColumnApi(String(column.id), { version: column.version, name }),
+    () => updateColumnApi(String(column.id), { version: column.version, ...data }),
     (board, updated) => ({
       ...board,
       columns: board.columns.map((item) => (item.id === updated.id ? updated : item)),
@@ -251,16 +278,56 @@ export async function clearColumn(projectId: string, column: IKanbanColumn) {
   );
 }
 
-export async function deleteColumn(projectId: string, column: IKanbanColumn) {
-  return optimisticMutation(
-    projectId,
-    (board) => ({
+export async function archiveColumn(
+  projectId: string,
+  column: IKanbanColumn,
+  destinationColumnId?: string,
+  allowIncompleteChecklist = false
+) {
+  const queryClient = getQueryClient();
+  const queryKey = boardKey(projectId);
+  await queryClient.cancelQueries({ queryKey });
+  const previous = queryClient.getQueryData<BoardResponseDto>(queryKey);
+
+  updateBoardCache(projectId, (board) => {
+    const sourceIssues = board.issues
+      .filter((issue) => issue.columnId === String(column.id))
+      .map((issue) => (destinationColumnId ? { ...issue, columnId: destinationColumnId } : issue));
+    const retainedIssues = board.issues.filter((issue) => issue.columnId !== String(column.id));
+    const lastDestinationIndex = retainedIssues.findLastIndex(
+      (issue) => issue.columnId === destinationColumnId
+    );
+    const insertAt = lastDestinationIndex >= 0 ? lastDestinationIndex + 1 : retainedIssues.length;
+
+    return {
       ...board,
       columns: board.columns.filter((item) => item.id !== column.id),
-      issues: board.issues.filter((issue) => issue.columnId !== column.id),
-    }),
-    () => archiveColumnApi(String(column.id), { version: column.version })
-  );
+      issues: destinationColumnId
+        ? [...retainedIssues.slice(0, insertAt), ...sourceIssues, ...retainedIssues.slice(insertAt)]
+        : retainedIssues,
+    };
+  });
+
+  let archived: BoardColumnResponseDto;
+  try {
+    const input = {
+      version: column.version,
+      destinationColumnId,
+      allowIncompleteChecklist,
+    };
+    archived = await archiveColumnApi(String(column.id), input);
+  } catch (error) {
+    if (previous) queryClient.setQueryData(queryKey, previous);
+    await queryClient.invalidateQueries({ queryKey });
+    throw error;
+  }
+
+  try {
+    await refetchBoard(projectId);
+  } catch {
+    await queryClient.invalidateQueries({ queryKey });
+  }
+  return archived;
 }
 
 export async function createTask(
@@ -277,13 +344,15 @@ export async function createTask(
     columnId: String(columnId),
     title: taskData.name,
     description: taskData.description ?? '',
-    type: 'task',
+    type: taskData.type,
     priority: taskData.priority as IssueResponseDto['priority'],
     labels: taskData.labels,
     storyPoints: taskData.storyPoints,
-    dueDate: taskData.due[1] ? String(taskData.due[1]) : null,
-    isBlocked: false,
-    blockedReason: null,
+    dueDate: taskData.dueDate,
+    isBlocked: taskData.isBlocked,
+    blockedReason: taskData.blockedReason,
+    checklist: taskData.checklist ?? [],
+    checklistIncompleteCount: taskData.checklistIncompleteCount ?? 0,
     completedAt: null,
     version: 1,
     createdAt: timestamp,
@@ -298,10 +367,14 @@ export async function createTask(
         columnId: String(columnId),
         title: taskData.name,
         description: taskData.description ?? '',
+        type: taskData.type,
         priority: taskData.priority as IssueResponseDto['priority'],
         labels: taskData.labels,
         storyPoints: taskData.storyPoints,
-        dueDate: taskData.due[1] ? new Date(String(taskData.due[1])).toISOString() : undefined,
+        dueDate: taskData.dueDate,
+        isBlocked: taskData.isBlocked,
+        blockedReason: taskData.blockedReason,
+        checklist: taskData.checklist ?? [],
       };
       return activeSprintId
         ? createIssueInSprint(activeSprintId, input)
@@ -332,9 +405,17 @@ export async function updateTask(projectId: string, taskData: IKanbanTask) {
               ...issue,
               title: taskData.name,
               description: taskData.description ?? '',
+              type: taskData.type,
               priority: taskData.priority as IssueResponseDto['priority'],
               labels: taskData.labels,
               storyPoints: taskData.storyPoints,
+              dueDate: taskData.dueDate,
+              isBlocked: taskData.isBlocked,
+              blockedReason: taskData.blockedReason,
+              checklist: taskData.checklist ?? [],
+              checklistIncompleteCount: (taskData.checklist ?? []).filter(
+                (item) => !item.isCompleted
+              ).length,
             }
           : issue
       ),
@@ -344,15 +425,20 @@ export async function updateTask(projectId: string, taskData: IKanbanTask) {
         version: taskData.version,
         title: taskData.name,
         description: taskData.description ?? '',
+        type: taskData.type,
         priority: taskData.priority as IssueResponseDto['priority'],
         labels: taskData.labels,
         storyPoints: taskData.storyPoints,
+        dueDate: taskData.dueDate,
+        isBlocked: taskData.isBlocked,
+        blockedReason: taskData.blockedReason,
+        checklist: taskData.checklist ?? [],
       }),
     (board, updated) => ({
       ...board,
       issues: board.issues.map((issue) => (issue.id === updated.id ? updated : issue)),
     })
-  );
+  ).then((updated) => toKanbanTask(updated, taskData.status));
 }
 
 export async function moveTaskToBacklog(projectId: string, task: IKanbanTask) {
@@ -390,12 +476,37 @@ export async function persistTaskMove(
   projectId: string,
   task: IKanbanTask,
   targetColumnId: UniqueIdentifier,
-  orderedTasks: IKanbanTask[]
+  orderedTasks: IKanbanTask[],
+  allowIncompleteChecklist = false
 ) {
   const index = orderedTasks.findIndex((item) => item.id === task.id);
   const beforeIssueId = orderedTasks[index + 1]?.id;
   const afterIssueId = orderedTasks[index - 1]?.id;
   const queryClient = getQueryClient();
+  const queryKey = boardKey(projectId);
+  await queryClient.cancelQueries({ queryKey });
+  const previous = queryClient.getQueryData<BoardResponseDto>(queryKey);
+  const orderedIssueIds = new Set(orderedTasks.map((item) => String(item.id)));
+
+  updateBoardCache(projectId, (board) => {
+    const issueById = new Map(board.issues.map((issue) => [issue.id, issue]));
+    const movedIssue = issueById.get(String(task.id));
+    const orderedIssues = orderedTasks.flatMap((orderedTask) => {
+      const issue = issueById.get(String(orderedTask.id));
+      if (!issue) return [];
+      return [
+        issue.id === String(task.id) ? { ...issue, columnId: String(targetColumnId) } : issue,
+      ];
+    });
+    const untouchedIssues = board.issues.filter(
+      (issue) => !orderedIssueIds.has(issue.id) && issue.id !== String(task.id)
+    );
+
+    return {
+      ...board,
+      issues: movedIssue ? [...untouchedIssues, ...orderedIssues] : board.issues,
+    };
+  });
 
   try {
     const updated = await moveIssue(String(task.id), {
@@ -404,6 +515,7 @@ export async function persistTaskMove(
       sprintId: task.sprintId ?? undefined,
       beforeIssueId: beforeIssueId ? String(beforeIssueId) : undefined,
       afterIssueId: afterIssueId ? String(afterIssueId) : undefined,
+      allowIncompleteChecklist,
     });
     updateBoardCache(projectId, (board) => ({
       ...board,
@@ -411,9 +523,25 @@ export async function persistTaskMove(
     }));
     return updated;
   } catch (error) {
-    await queryClient.invalidateQueries({ queryKey: boardKey(projectId) });
+    if (previous) queryClient.setQueryData(queryKey, previous);
     throw error;
+  } finally {
+    await queryClient.invalidateQueries({ queryKey });
   }
+}
+
+export async function undoTaskMove(
+  projectId: string,
+  originalTask: IKanbanTask,
+  movedVersion: number,
+  originalColumnId: UniqueIdentifier,
+  originalOrderedTasks: IKanbanTask[]
+) {
+  const latestTask = { ...originalTask, version: movedVersion };
+  const restoredOrder = originalOrderedTasks.map((task) =>
+    task.id === originalTask.id ? latestTask : task
+  );
+  return persistTaskMove(projectId, latestTask, originalColumnId, restoredOrder);
 }
 
 export async function archiveTask(projectId: string, task: IKanbanTask) {
@@ -424,6 +552,24 @@ export async function archiveTask(projectId: string, task: IKanbanTask) {
       issues: board.issues.filter((issue) => issue.id !== task.id),
     }),
     () => archiveIssue(String(task.id), { version: task.version })
+  );
+}
+
+export async function restoreTask(projectId: string, task: IKanbanTask) {
+  return optimisticMutation(
+    projectId,
+    (board) => board,
+    () => restoreIssue(String(task.id), { version: task.version }),
+    (board, restored) => ({ ...board, issues: [restored, ...board.issues] })
+  );
+}
+
+export async function duplicateTask(projectId: string, task: IKanbanTask) {
+  return optimisticMutation(
+    projectId,
+    (board) => board,
+    () => duplicateIssue(String(task.id), { version: task.version }),
+    (board, duplicate) => ({ ...board, issues: [duplicate, ...board.issues] })
   );
 }
 

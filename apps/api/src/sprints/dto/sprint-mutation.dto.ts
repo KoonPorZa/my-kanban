@@ -1,5 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
+  ArrayUnique,
+  ArrayMaxSize,
   IsInt,
   IsISO8601,
   IsNotEmpty,
@@ -38,6 +41,15 @@ export class SprintIssueDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   issueId!: string;
+}
+
+export class BulkSprintIssuesDto {
+  @ApiProperty({ type: [String], format: 'uuid', maxItems: 100 })
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(100)
+  @IsUUID(undefined, { each: true })
+  issueIds!: string[];
 }
 
 export class VersionedSprintCommandDto {

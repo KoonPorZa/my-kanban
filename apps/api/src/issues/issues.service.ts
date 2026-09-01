@@ -15,6 +15,7 @@ export class IssuesService {
       ...input,
       title: input.title.trim(),
       labels: this.normalizeLabels(input.labels),
+      checklist: this.normalizeChecklist(input.checklist),
     });
   }
 
@@ -34,6 +35,7 @@ export class IssuesService {
       ...input,
       title: input.title?.trim(),
       labels: this.normalizeLabels(input.labels),
+      checklist: this.normalizeChecklist(input.checklist),
     });
   }
 
@@ -43,6 +45,28 @@ export class IssuesService {
 
   archive(ownerId: string, issueId: string, version: number) {
     return this.issues.archive(ownerId, issueId, version);
+  }
+
+  duplicate(ownerId: string, issueId: string, version: number, targetColumnId?: string) {
+    return this.issues.duplicate(ownerId, issueId, version, targetColumnId);
+  }
+
+  restore(
+    ownerId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string,
+    beforeIssueId?: string,
+    afterIssueId?: string
+  ) {
+    return this.issues.restore(
+      ownerId,
+      issueId,
+      version,
+      targetColumnId,
+      beforeIssueId,
+      afterIssueId
+    );
   }
 
   getForProject(projectId: string, issueId: string, includeArchived = false) {
@@ -119,7 +143,21 @@ export class IssuesService {
       ...input,
       title,
       labels: this.normalizeLabels(input.labels),
+      checklist: this.normalizeChecklist(input.checklist),
     };
+  }
+
+  private normalizeChecklist(checklist: CreateIssueDto['checklist']) {
+    if (!checklist) return undefined;
+    const ids = checklist.flatMap(({ id }) => (id ? [id] : []));
+    if (new Set(ids).size !== ids.length) {
+      throw new DomainValidationError('checklist item ids must be unique');
+    }
+    return checklist.map((item) => {
+      const title = item.title.trim();
+      if (!title) throw new DomainValidationError('checklist item title must not be empty');
+      return { ...item, title, isCompleted: item.isCompleted ?? false };
+    });
   }
 
   private validateBlockedState(isBlocked: boolean | undefined, blockedReason?: string | null) {

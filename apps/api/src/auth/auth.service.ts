@@ -5,9 +5,9 @@ import { PrismaService } from '../database/prisma.service';
 import type { GoogleIdentity, SessionPrincipal } from './auth.types';
 
 const DEFAULT_COLUMNS = [
-  { name: 'Backlog', category: 'todo' },
   { name: 'To do', category: 'todo' },
   { name: 'In progress', category: 'in_progress' },
+  { name: 'Review', category: 'in_progress' },
   { name: 'Done', category: 'done' },
 ] as const;
 

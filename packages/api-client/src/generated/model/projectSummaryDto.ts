@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0
  */
 import type { ProjectSummaryDtoMode } from './projectSummaryDtoMode';
+import type { ProjectSummaryDtoDoneRetentionDays } from './projectSummaryDtoDoneRetentionDays';
 
 export interface ProjectSummaryDto {
   id: string;
@@ -13,4 +14,5 @@ export interface ProjectSummaryDto {
   color: string;
   mode: ProjectSummaryDtoMode;
   version: number;
+  doneRetentionDays: ProjectSummaryDtoDoneRetentionDays;
 }

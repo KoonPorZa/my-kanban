@@ -22,6 +22,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ArchiveColumnDto,
   BoardColumnResponseDto,
   BoardResponseDto,
   CreateColumnDto,
@@ -501,11 +502,11 @@ export const useClearColumn = <TError = ErrorType<unknown>, TContext = unknown>(
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * @summary Archive a board column and its tasks
+ * @summary Archive a board column
  */
 export const archiveColumn = (
   columnId: string,
-  versionedColumnCommandDto: VersionedColumnCommandDto,
+  archiveColumnDto: ArchiveColumnDto,
   options?: SecondParameter<typeof apiClient>,
   signal?: AbortSignal
 ) => {
@@ -514,7 +515,7 @@ export const archiveColumn = (
       url: `/api/v1/columns/${columnId}/archive`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      data: versionedColumnCommandDto,
+      data: archiveColumnDto,
       signal,
     },
     options
@@ -528,14 +529,14 @@ export const getArchiveColumnMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof archiveColumn>>,
     TError,
-    { columnId: string; data: VersionedColumnCommandDto },
+    { columnId: string; data: ArchiveColumnDto },
     TContext
   >;
   request?: SecondParameter<typeof apiClient>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof archiveColumn>>,
   TError,
-  { columnId: string; data: VersionedColumnCommandDto },
+  { columnId: string; data: ArchiveColumnDto },
   TContext
 > => {
   const mutationKey = ['archiveColumn'];
@@ -547,7 +548,7 @@ export const getArchiveColumnMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof archiveColumn>>,
-    { columnId: string; data: VersionedColumnCommandDto }
+    { columnId: string; data: ArchiveColumnDto }
   > = (props) => {
     const { columnId, data } = props ?? {};
 
@@ -558,18 +559,18 @@ export const getArchiveColumnMutationOptions = <
 };
 
 export type ArchiveColumnMutationResult = NonNullable<Awaited<ReturnType<typeof archiveColumn>>>;
-export type ArchiveColumnMutationBody = VersionedColumnCommandDto;
+export type ArchiveColumnMutationBody = ArchiveColumnDto;
 export type ArchiveColumnMutationError = ErrorType<unknown>;
 
 /**
- * @summary Archive a board column and its tasks
+ * @summary Archive a board column
  */
 export const useArchiveColumn = <TError = ErrorType<unknown>, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof archiveColumn>>,
       TError,
-      { columnId: string; data: VersionedColumnCommandDto },
+      { columnId: string; data: ArchiveColumnDto },
       TContext
     >;
     request?: SecondParameter<typeof apiClient>;
@@ -578,7 +579,7 @@ export const useArchiveColumn = <TError = ErrorType<unknown>, TContext = unknown
 ): UseMutationResult<
   Awaited<ReturnType<typeof archiveColumn>>,
   TError,
-  { columnId: string; data: VersionedColumnCommandDto },
+  { columnId: string; data: ArchiveColumnDto },
   TContext
 > => {
   const mutationOptions = getArchiveColumnMutationOptions(options);

@@ -1,6 +1,16 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 
+import { redirectExpiredSession } from './session-expiry';
+
 const api = axios.create({ withCredentials: true });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    redirectExpiredSession(error.response?.status, error.config?.url);
+    return Promise.reject(error);
+  }
+);
 
 export async function apiClient<T>(
   config: AxiosRequestConfig,

@@ -17,6 +17,7 @@ import {
   getGetBoardQueryKey,
   getListSprintsQueryKey,
   getListProjectsQueryKey,
+  useBulkAddIssuesToSprint,
   useRemoveIssueFromSprint,
 } from '@my-kanban/api-client';
 
@@ -26,6 +27,7 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
+import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -34,6 +36,7 @@ import { paths } from 'src/routes/paths';
 
 import { getQueryClient } from 'src/lib/query-client';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { createBacklogIssue, reorderBacklogIssue } from 'src/actions/sprint-backlog';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
@@ -46,6 +49,7 @@ import { CreateSprintDialog } from './create-sprint-dialog';
 import { ActiveSprintSummary } from './active-sprint-summary';
 import { CompleteSprintDialog } from './complete-sprint-dialog';
 import { SprintOverviewHeader } from './sprint-overview-header';
+import { BacklogOrderList, type PlanningBacklogIssue } from './backlog-order-list';
 
 import type { CreateSprintFormValue } from './create-sprint-dialog';
 import type { IncompleteWorkDestination } from './complete-sprint-dialog';
@@ -63,6 +67,8 @@ export function SprintsView() {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [destination, setDestination] = useState<IncompleteWorkDestination>({ type: 'backlog' });
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [backlogReordering, setBacklogReordering] = useState(false);
+  const [backlogCreating, setBacklogCreating] = useState(false);
 
   const projectsQuery = useListProjects({
     query: { staleTime: 30_000, refetchOnWindowFocus: true },
@@ -109,6 +115,7 @@ export function SprintsView() {
   const updateProjectMutation = useUpdateProject();
   const createMutation = useCreateSprint();
   const addMutation = useAddIssueToSprint();
+  const bulkAddMutation = useBulkAddIssuesToSprint();
   const removeMutation = useRemoveIssueFromSprint();
   const startMutation = useStartSprint();
   const completeMutation = useCompleteSprint();
@@ -231,11 +238,48 @@ export function SprintsView() {
     }
   };
 
+  const reorderBacklog = async (
+    issue: PlanningBacklogIssue,
+    orderedIssues: PlanningBacklogIssue[]
+  ) => {
+    setMutationError(null);
+    setBacklogReordering(true);
+    try {
+      await reorderBacklogIssue(projectId, issue, orderedIssues);
+      toast.success('Backlog order updated');
+    } catch (error) {
+      setMutationError(errorMessage(error));
+      throw error;
+    } finally {
+      setBacklogReordering(false);
+    }
+  };
+
+  const createBacklogTask = async (title: string) => {
+    const firstColumn = boardQuery.data?.columns[0];
+    if (!firstColumn) throw new Error('Create a Board column before adding backlog tasks');
+    setMutationError(null);
+    setBacklogCreating(true);
+    try {
+      await createBacklogIssue(projectId, firstColumn.id, title);
+      await queryClient.invalidateQueries({ queryKey: getGetBoardQueryKey(projectId) });
+      toast.success('Backlog task created');
+    } catch (error) {
+      setMutationError(errorMessage(error));
+      throw error;
+    } finally {
+      setBacklogCreating(false);
+    }
+  };
+
   const busy =
     updateProjectMutation.isPending ||
     createMutation.isPending ||
     addMutation.isPending ||
+    bulkAddMutation.isPending ||
     removeMutation.isPending ||
+    backlogReordering ||
+    backlogCreating ||
     startMutation.isPending ||
     completeMutation.isPending;
   const loading = projectsQuery.isLoading || sprintsQuery.isLoading || boardQuery.isLoading;
@@ -332,9 +376,12 @@ export function SprintsView() {
               />
               <PlanningPanel
                 sprint={activeSprint}
+                columns={boardQuery.data?.columns ?? []}
                 backlogIssues={backlogIssues}
                 assignedIssues={activeIssues}
                 busy={busy}
+                onReorderBacklog={reorderBacklog}
+                onCreateBacklog={createBacklogTask}
                 onAdd={(issueId) =>
                   void runMutation(
                     () =>
@@ -343,6 +390,16 @@ export function SprintsView() {
                         data: { issueId },
                       }),
                     'Task added to active Sprint'
+                  )
+                }
+                onBulkAdd={(issueIds) =>
+                  runMutation(
+                    () =>
+                      bulkAddMutation.mutateAsync({
+                        sprintId: activeSprint.id,
+                        data: { issueIds },
+                      }),
+                    `${issueIds.length} tasks added to active Sprint`
                   )
                 }
                 onRemove={(issueId) =>
@@ -401,9 +458,12 @@ export function SprintsView() {
           {selectedSprint && (
             <PlanningPanel
               sprint={selectedSprint}
+              columns={boardQuery.data?.columns ?? []}
               backlogIssues={backlogIssues}
               assignedIssues={selectedIssues}
               busy={busy}
+              onReorderBacklog={reorderBacklog}
+              onCreateBacklog={createBacklogTask}
               onAdd={(issueId) =>
                 void runMutation(
                   () =>
@@ -412,6 +472,16 @@ export function SprintsView() {
                       data: { issueId },
                     }),
                   'Task added to Sprint'
+                )
+              }
+              onBulkAdd={(issueIds) =>
+                runMutation(
+                  () =>
+                    bulkAddMutation.mutateAsync({
+                      sprintId: selectedSprint.id,
+                      data: { issueIds },
+                    }),
+                  `${issueIds.length} tasks added to Sprint`
                 )
               }
               onRemove={(issueId) =>
@@ -511,23 +581,50 @@ type PlanningIssue = {
   id: string;
   title: string;
   storyPoints: number | null;
+  columnId: string;
+  version: number;
 };
 
-function PlanningPanel({
+export function PlanningPanel({
   sprint,
+  columns,
   backlogIssues,
   assignedIssues,
   busy,
   onAdd,
+  onBulkAdd,
   onRemove,
+  onReorderBacklog,
+  onCreateBacklog,
+  backlogFilterActive = false,
 }: {
   sprint: SprintResponseDto;
+  columns: Array<{ id: string; name: string }>;
   backlogIssues: PlanningIssue[];
   assignedIssues: PlanningIssue[];
   busy: boolean;
   onAdd: (issueId: string) => void;
+  onBulkAdd: (issueIds: string[]) => Promise<boolean>;
   onRemove: (issueId: string) => void;
+  onReorderBacklog: (
+    issue: PlanningBacklogIssue,
+    orderedIssues: PlanningBacklogIssue[]
+  ) => Promise<void>;
+  onCreateBacklog: (title: string) => Promise<void>;
+  backlogFilterActive?: boolean;
 }) {
+  const [selectedBacklogIds, setSelectedBacklogIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const available = new Set(backlogIssues.map(({ id }) => id));
+    setSelectedBacklogIds((current) => current.filter((id) => available.has(id)));
+  }, [backlogIssues]);
+
+  const addSelected = async () => {
+    if (selectedBacklogIds.length === 0) return;
+    if (await onBulkAdd(selectedBacklogIds)) setSelectedBacklogIds([]);
+  };
+
   return (
     <Card variant="outlined">
       <CardContent>
@@ -545,13 +642,32 @@ function PlanningPanel({
           gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
         }}
       >
-        <IssueList
-          title="Backlog"
-          empty="No backlog issues"
+        <BacklogOrderList
+          columns={columns}
           issues={backlogIssues}
-          actionLabel="Add"
           busy={busy}
-          onAction={onAdd}
+          selectedIds={selectedBacklogIds}
+          reorderDisabled={backlogFilterActive}
+          onAdd={onAdd}
+          onReorder={onReorderBacklog}
+          onCreate={onCreateBacklog}
+          onToggleSelected={(issueId) =>
+            setSelectedBacklogIds((current) =>
+              current.includes(issueId)
+                ? current.filter((id) => id !== issueId)
+                : [...current, issueId]
+            )
+          }
+          bulkAction={
+            <Button
+              size="small"
+              variant="contained"
+              disabled={busy || selectedBacklogIds.length === 0}
+              onClick={() => void addSelected()}
+            >
+              Add selected ({selectedBacklogIds.length})
+            </Button>
+          }
         />
         <IssueList
           title="Sprint scope"
@@ -574,6 +690,9 @@ function IssueList({
   actionLabel,
   busy,
   onAction,
+  selectedIds,
+  onToggleSelected,
+  bulkAction,
   sx,
 }: {
   title: string;
@@ -582,11 +701,17 @@ function IssueList({
   actionLabel: string;
   busy: boolean;
   onAction: (issueId: string) => void;
+  selectedIds?: string[];
+  onToggleSelected?: (issueId: string) => void;
+  bulkAction?: React.ReactNode;
   sx?: object;
 }) {
   return (
     <Box sx={{ p: 3, ...sx }}>
-      <Typography variant="subtitle1">{title}</Typography>
+      <Box sx={{ gap: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="subtitle1">{title}</Typography>
+        {bulkAction}
+      </Box>
       {issues.length === 0 ? (
         <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
           {empty}
@@ -595,6 +720,15 @@ function IssueList({
         <Stack divider={<Divider flexItem />} sx={{ mt: 1 }}>
           {issues.map((issue) => (
             <Box key={issue.id} sx={{ py: 1.5, gap: 2, display: 'flex', alignItems: 'center' }}>
+              {onToggleSelected && (
+                <Checkbox
+                  size="small"
+                  disabled={busy}
+                  checked={selectedIds?.includes(issue.id) ?? false}
+                  onChange={() => onToggleSelected(issue.id)}
+                  inputProps={{ 'aria-label': `Select ${issue.title}` }}
+                />
+              )}
               <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                 <Typography variant="body2" noWrap>
                   {issue.title}
