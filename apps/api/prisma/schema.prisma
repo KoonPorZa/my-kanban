@@ -33,6 +33,12 @@ enum IssueType {
   chore
 }
 
+enum SprintStatus {
+  planned
+  active
+  completed
+}
+
 enum McpClientType {
   codex
   claude
@@ -105,21 +111,23 @@ model Workspace {
 }
 
 model Project {
-  id          String                @id @default(uuid()) @db.Uuid
-  workspaceId String                @map("workspace_id") @db.Uuid
-  name        String                @db.VarChar(120)
-  color       String                @default("primary") @db.VarChar(32)
-  mode        ProjectMode           @default(kanban)
-  version     Int                   @default(1)
-  archivedAt  DateTime?             @map("archived_at") @db.Timestamptz(6)
-  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  columns     BoardColumn[]
-  issues      Issue[]
-  mcpTokens   McpAccessToken[]
-  idempotency MutationIdempotency[]
-  auditEvents McpAuditEvent[]
-  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String                @id @default(uuid()) @db.Uuid
+  workspaceId       String                @map("workspace_id") @db.Uuid
+  name              String                @db.VarChar(120)
+  color             String                @default("primary") @db.VarChar(32)
+  mode              ProjectMode           @default(kanban)
+  doneRetentionDays Int                   @default(30) @map("done_retention_days")
+  version           Int                   @default(1)
+  archivedAt        DateTime?             @map("archived_at") @db.Timestamptz(6)
+  workspace         Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns           BoardColumn[]
+  issues            Issue[]
+  sprints           Sprint[]
+  mcpTokens         McpAccessToken[]
+  idempotency       MutationIdempotency[]
+  auditEvents       McpAuditEvent[]
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([workspaceId, archivedAt])
   @@map("projects")
@@ -147,6 +155,7 @@ model BoardColumn {
 model Issue {
   id            String          @id @default(uuid()) @db.Uuid
   projectId     String          @map("project_id") @db.Uuid
+  sprintId      String?         @map("sprint_id") @db.Uuid
   columnId      String          @map("column_id") @db.Uuid
   title         String          @db.VarChar(200)
   description   String          @default("")
@@ -162,15 +171,59 @@ model Issue {
   archivedAt    DateTime?       @map("archived_at") @db.Timestamptz(6)
   completedAt   DateTime?       @map("completed_at") @db.Timestamptz(6)
   project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint        Sprint?         @relation(fields: [sprintId, projectId], references: [id, projectId], onDelete: Restrict)
   column        BoardColumn     @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  checklist     ChecklistItem[]
   auditEvents   McpAuditEvent[]
   createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([columnId, rank])
   @@index([projectId, archivedAt, columnId, rank])
+  @@index([projectId, sprintId, archivedAt, columnId, rank])
   @@index([projectId, dueDate])
   @@map("issues")
+}
+
+model ChecklistItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  issueId     String   @map("issue_id") @db.Uuid
+  title       String   @db.VarChar(300)
+  isCompleted Boolean  @default(false) @map("is_completed")
+  rank        BigInt
+  issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([issueId, rank])
+  @@index([issueId, rank])
+  @@map("checklist_items")
+}
+
+model Sprint {
+  id                   String       @id @default(uuid()) @db.Uuid
+  projectId            String       @map("project_id") @db.Uuid
+  name                 String       @db.VarChar(120)
+  goal                 String       @default("") @db.VarChar(500)
+  status               SprintStatus @default(planned)
+  startDate            DateTime     @map("start_date") @db.Date
+  endDate              DateTime     @map("end_date") @db.Date
+  plannedPoints        Int          @default(0) @map("planned_points")
+  plannedIssueCount    Int          @default(0) @map("planned_issue_count")
+  completedPoints      Int          @default(0) @map("completed_points")
+  completedIssueCount  Int          @default(0) @map("completed_issue_count")
+  incompletePoints     Int          @default(0) @map("incomplete_points")
+  incompleteIssueCount Int          @default(0) @map("incomplete_issue_count")
+  completedAt          DateTime?    @map("completed_at") @db.Timestamptz(6)
+  version              Int          @default(1)
+  project              Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues               Issue[]
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([id, projectId], map: "sprints_id_project_id_key")
+  @@index([projectId, status, startDate(sort: Desc)])
+  @@map("sprints")
 }
 
 model McpAccessToken {

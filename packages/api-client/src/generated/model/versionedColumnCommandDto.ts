@@ -9,4 +9,6 @@
 export interface VersionedColumnCommandDto {
   /** @minimum 1 */
   version: number;
+  /** Limit the command to one Active Sprint */
+  sprintId?: string;
 }

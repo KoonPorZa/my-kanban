@@ -1,27 +1,26 @@
 import type { BoxProps } from '@mui/material/Box';
 
-import { useState, useCallback } from 'react';
-import { useBoolean, usePopover } from 'minimal-shared/hooks';
+import { useBoolean } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
-import MenuList from '@mui/material/MenuList';
-import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
-import { CustomPopover } from 'src/components/custom-popover';
 
 // ----------------------------------------------------------------------
 
 type Props = BoxProps & {
   liked: boolean;
   taskName: string;
-  taskStatus: string;
   onArchive: () => void;
+  onDuplicate: () => void;
+  onMovePrevious?: () => void;
+  onMoveNext?: () => void;
+  onMoveToBacklog?: () => void;
   onLikeToggle: () => void;
   onCloseDetails: () => void;
 };
@@ -31,46 +30,17 @@ export function KanbanDetailsToolbar({
   liked,
   taskName,
   onArchive,
-  taskStatus,
+  onDuplicate,
+  onMovePrevious,
+  onMoveNext,
+  onMoveToBacklog,
   onLikeToggle,
   onCloseDetails,
   ...other
 }: Props) {
   const smUp = useMediaQuery((theme) => theme.breakpoints.up('sm'));
 
-  const menuActions = usePopover();
   const confirmDialog = useBoolean();
-
-  const [status, setStatus] = useState(taskStatus);
-
-  const handleChangeStatus = useCallback(
-    (newValue: string) => {
-      menuActions.onClose();
-      setStatus(newValue);
-    },
-    [menuActions]
-  );
-
-  const renderMenuActions = () => (
-    <CustomPopover
-      open={menuActions.open}
-      anchorEl={menuActions.anchorEl}
-      onClose={menuActions.onClose}
-      slotProps={{ arrow: { placement: 'top-right' } }}
-    >
-      <MenuList>
-        {['To do', 'In progress', 'Ready to test', 'Done'].map((option) => (
-          <MenuItem
-            key={option}
-            selected={status === option}
-            onClick={() => handleChangeStatus(option)}
-          >
-            {option}
-          </MenuItem>
-        ))}
-      </MenuList>
-    </CustomPopover>
-  );
 
   const renderConfirmDialog = () => (
     <ConfirmDialog
@@ -106,26 +76,74 @@ export function KanbanDetailsToolbar({
       >
         {!smUp && (
           <Tooltip title="Back">
-            <IconButton onClick={onCloseDetails} sx={{ mr: 1 }}>
+            <IconButton
+              aria-label="Back"
+              onClick={onCloseDetails}
+              sx={{ mr: 1, minWidth: 44, minHeight: 44 }}
+            >
               <Iconify icon="eva:arrow-ios-back-fill" />
             </IconButton>
           </Tooltip>
         )}
 
-        <Button
-          size="small"
-          variant="soft"
-          endIcon={<Iconify icon="eva:arrow-ios-downward-fill" width={16} sx={{ ml: -0.5 }} />}
-          onClick={menuActions.onOpen}
-        >
-          {status}
-        </Button>
-
         <Box component="span" sx={{ flexGrow: 1 }} />
 
         <Box sx={{ display: 'flex' }}>
+          <Tooltip title="Previous column">
+            <span>
+              <IconButton
+                disabled={!onMovePrevious}
+                aria-label="Move task to previous column"
+                onClick={onMovePrevious}
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <Iconify icon="eva:arrow-ios-back-fill" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Next column">
+            <span>
+              <IconButton
+                disabled={!onMoveNext}
+                aria-label="Move task to next column"
+                onClick={onMoveNext}
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <Iconify icon="eva:arrow-ios-forward-fill" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {onMoveToBacklog && (
+            <Button
+              size="small"
+              color="inherit"
+              variant="soft"
+              aria-label="Move task to backlog"
+              startIcon={<Iconify icon="solar:inbox-in-bold" />}
+              onClick={onMoveToBacklog}
+              sx={{ minHeight: 44 }}
+            >
+              Backlog
+            </Button>
+          )}
+
+          <Tooltip title="Duplicate task">
+            <IconButton
+              aria-label="Duplicate task"
+              onClick={onDuplicate}
+              sx={{ minWidth: 44, minHeight: 44 }}
+            >
+              <Iconify icon="solar:copy-bold" />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Like">
-            <IconButton color={liked ? 'default' : 'primary'} onClick={onLikeToggle}>
+            <IconButton
+              aria-label="Like task"
+              color={liked ? 'default' : 'primary'}
+              onClick={onLikeToggle}
+              sx={{ minWidth: 44, minHeight: 44 }}
+            >
               <Iconify icon="solar:like-bold" />
             </IconButton>
           </Tooltip>
@@ -137,18 +155,13 @@ export function KanbanDetailsToolbar({
             aria-label="Archive task"
             startIcon={<Iconify icon="solar:archive-down-minimlistic-bold" />}
             onClick={confirmDialog.onTrue}
-            sx={{ ml: 0.5 }}
+            sx={{ ml: 0.5, minHeight: 44 }}
           >
             Archive
           </Button>
-
-          <IconButton>
-            <Iconify icon="eva:more-vertical-fill" />
-          </IconButton>
         </Box>
       </Box>
 
-      {renderMenuActions()}
       {renderConfirmDialog()}
     </>
   );

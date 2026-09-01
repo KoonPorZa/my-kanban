@@ -6,8 +6,10 @@ import { memo, useEffect } from 'react';
 import { varAlpha, mergeClasses } from 'minimal-shared/utils';
 
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import { styled } from '@mui/material/styles';
+import IconButton from '@mui/material/IconButton';
 import AvatarGroup, { avatarGroupClasses } from '@mui/material/AvatarGroup';
 
 import { Iconify } from 'src/components/iconify';
@@ -20,6 +22,8 @@ export type ItemBaseProps = React.ComponentProps<typeof ItemRoot> & {
   ref?: (node: HTMLElement | null) => void;
   task: IKanbanTask;
   open?: boolean;
+  onMovePrevious?: () => void;
+  onMoveNext?: () => void;
   stateProps?: {
     fadeIn?: boolean;
     sorting?: boolean;
@@ -32,9 +36,19 @@ export type ItemBaseProps = React.ComponentProps<typeof ItemRoot> & {
   };
 };
 
-function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) {
+function ItemBase({
+  task,
+  open,
+  stateProps,
+  ref,
+  sx,
+  onMovePrevious,
+  onMoveNext,
+  ...other
+}: ItemBaseProps) {
   const { fadeIn, sorting, disabled, dragging, dragOverlay, transition, transform, listeners } =
     stateProps ?? {};
+  const { onClick, onKeyDown, ...itemProps } = other;
 
   useEffect(() => {
     if (!dragOverlay) {
@@ -50,19 +64,26 @@ function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) 
   }, [dragOverlay]);
 
   const renderPriority = () => (
-    <Iconify
-      icon={
-        (task.priority === 'low' && 'solar:double-alt-arrow-down-bold-duotone') ||
-        (task.priority === 'medium' && 'solar:double-alt-arrow-right-bold-duotone') ||
-        'solar:double-alt-arrow-up-bold-duotone'
+    <Chip
+      size="small"
+      variant="soft"
+      label={task.priority}
+      aria-label={`Priority ${task.priority}`}
+      color={
+        (['urgent', 'high'].includes(task.priority) && 'error') ||
+        (task.priority === 'medium' && 'warning') ||
+        (task.priority === 'low' && 'info') ||
+        'default'
       }
       sx={{
-        top: 4,
-        right: 4,
+        top: 6,
+        right: 6,
         position: 'absolute',
-        ...(task.priority === 'low' && { color: 'info.main' }),
-        ...(task.priority === 'medium' && { color: 'warning.main' }),
-        ...(task.priority === 'hight' && { color: 'error.main' }),
+        textTransform: 'capitalize',
+        ...(task.priority === 'medium' && {
+          color: 'warning.darker',
+          bgcolor: 'warning.lighter',
+        }),
       }}
     />
   );
@@ -85,6 +106,42 @@ function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) 
           color: 'text.disabled',
         }}
       >
+        {task.storyPoints !== null && (
+          <Box
+            component="span"
+            aria-label={`${task.storyPoints} story points`}
+            sx={{
+              mr: 1,
+              px: 0.75,
+              py: 0.25,
+              borderRadius: 0.75,
+              color: 'primary.dark',
+              bgcolor: 'primary.lighter',
+              fontWeight: 'fontWeightSemiBold',
+            }}
+          >
+            {task.storyPoints} pts
+          </Box>
+        )}
+
+        {!!task.checklist?.length && (
+          <Box
+            component="span"
+            aria-label={`${task.checklistIncompleteCount ?? 0} checklist items left`}
+            sx={{ mr: 1, color: 'text.secondary' }}
+          >
+            <Iconify width={16} icon="solar:list-bold" sx={{ mr: 0.25 }} />
+            {task.checklist.length - (task.checklistIncompleteCount ?? 0)}/{task.checklist.length}
+          </Box>
+        )}
+
+        {task.dueDate && (
+          <Box component="span" aria-label={`Due ${task.dueDate.slice(0, 10)}`} sx={{ mr: 1 }}>
+            <Iconify width={16} icon="solar:calendar-date-bold" sx={{ mr: 0.25 }} />
+            {task.dueDate.slice(0, 10)}
+          </Box>
+        )}
+
         {!!task?.comments?.length && (
           <>
             <Iconify width={16} icon="solar:chat-round-dots-bold" sx={{ mr: 0.25 }} />
@@ -107,6 +164,46 @@ function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) 
           <Avatar key={user.id} alt={user.name} src={user.avatarUrl} />
         ))}
       </AvatarGroup>
+    </Box>
+  );
+
+  const renderMoveActions = () =>
+    (onMovePrevious || onMoveNext) && (
+      <MoveActions role="group" aria-label="Move task between columns">
+        <IconButton
+          size="small"
+          disabled={!onMovePrevious}
+          aria-label="Move task to previous column"
+          onClick={onMovePrevious}
+        >
+          <Iconify width={16} icon="eva:arrow-ios-back-fill" />
+        </IconButton>
+        <IconButton
+          size="small"
+          disabled={!onMoveNext}
+          aria-label="Move task to next column"
+          onClick={onMoveNext}
+        >
+          <Iconify width={16} icon="eva:arrow-ios-forward-fill" />
+        </IconButton>
+      </MoveActions>
+    );
+
+  const renderMetadata = () => (
+    <Box sx={{ gap: 0.5, display: 'flex', flexWrap: 'wrap', mt: 1 }}>
+      <Chip
+        size="small"
+        variant="soft"
+        color={task.type === 'bug' ? 'error' : 'default'}
+        label={task.type}
+      />
+      {task.isBlocked && <Chip size="small" variant="soft" color="error" label="Blocked" />}
+      {task.labels.slice(0, 2).map((label) => (
+        <Chip key={label} size="small" variant="outlined" label={label} />
+      ))}
+      {task.labels.length > 2 && (
+        <Chip size="small" variant="outlined" label={`+${task.labels.length - 2}`} />
+      )}
     </Box>
   );
 
@@ -135,19 +232,33 @@ function ItemBase({ task, open, stateProps, ref, sx, ...other }: ItemBaseProps) 
           [kanbanClasses.state.dragOverlay]: dragOverlay,
         })}
         data-cypress="draggable-item"
+        role="button"
+        aria-label={`Open task ${task.name}`}
         tabIndex={0}
         sx={sx}
         {...listeners}
-        {...other}
+        {...itemProps}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onClick?.(event as unknown as React.MouseEvent<HTMLDivElement>);
+            return;
+          }
+          listeners?.onKeyDown?.(event);
+          onKeyDown?.(event);
+        }}
       >
         {renderImage()}
 
         <ItemContent>
           {renderPriority()}
           {task.name}
+          {renderMetadata()}
           {renderInfo()}
         </ItemContent>
       </ItemRoot>
+      {renderMoveActions()}
     </ItemWrap>
   );
 }
@@ -162,6 +273,7 @@ const ItemWrap = styled('li')(() => ({
     '100%': { opacity: 1 },
   },
   display: 'flex',
+  position: 'relative',
   transform:
     'translate3d(var(--translate-x, 0), var(--translate-y, 0), 0) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1))',
   transformOrigin: '0 0',
@@ -174,12 +286,35 @@ const ItemWrap = styled('li')(() => ({
   },
 }));
 
+const MoveActions = styled('div')(({ theme }) => ({
+  right: 8,
+  bottom: 8,
+  zIndex: 1,
+  display: 'flex',
+  position: 'absolute',
+  borderRadius: 8,
+  backgroundColor: theme.vars.palette.background.paper,
+  boxShadow: theme.vars.customShadows.z1,
+  [`& .MuiIconButton-root`]: {
+    minWidth: 44,
+    minHeight: 44,
+    [theme.breakpoints.up('sm')]: {
+      minWidth: 26,
+      minHeight: 26,
+    },
+  },
+}));
+
 const ItemRoot = styled('div')(({ theme }) => ({
   width: '100%',
   cursor: 'grab',
   outline: 'none',
   overflow: 'hidden',
   position: 'relative',
+  '&:focus-visible': {
+    outline: `3px solid ${theme.vars.palette.primary.main}`,
+    outlineOffset: 2,
+  },
   transformOrigin: '50% 50%',
   touchAction: 'manipulation',
   borderRadius: 'var(--item-radius)',

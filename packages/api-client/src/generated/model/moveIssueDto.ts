@@ -10,6 +10,10 @@ export interface MoveIssueDto {
   /** @minimum 1 */
   version: number;
   targetColumnId: string;
+  /** Visible Sprint scope used when ordering tasks on the Scrum Board */
+  sprintId?: string;
   beforeIssueId?: string;
   afterIssueId?: string;
+  /** Explicitly allow moving a task with unfinished checklist items to Done */
+  allowIncompleteChecklist?: boolean;
 }

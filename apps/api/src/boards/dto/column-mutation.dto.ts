@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   Min,
   IsInt,
   IsEnum,
@@ -93,4 +94,34 @@ export class VersionedColumnCommandDto {
   @IsInt()
   @Min(1)
   version!: number;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Limit the command to one Active Sprint' })
+  @IsOptional()
+  @IsUUID()
+  sprintId?: string;
+}
+
+export class ArchiveColumnDto {
+  @ApiProperty({ minimum: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  version!: number;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Required when the archived column still contains active tasks',
+  })
+  @IsOptional()
+  @IsUUID()
+  destinationColumnId?: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      'Explicitly allow moving tasks with unfinished checklist items to a Done destination',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowIncompleteChecklist?: boolean;
 }

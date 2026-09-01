@@ -97,6 +97,141 @@
         },
         "summary": "List owner projects",
         "tags": ["projects"]
+      },
+      "post": {
+        "operationId": "createProject",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create and activate a project",
+        "tags": ["projects"]
+      }
+    },
+    "/api/v1/projects/{projectId}": {
+      "patch": {
+        "operationId": "updateProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a project",
+        "tags": ["projects"]
+      }
+    },
+    "/api/v1/projects/{projectId}/activate": {
+      "post": {
+        "operationId": "activateProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Make a project active",
+        "tags": ["projects"]
+      }
+    },
+    "/api/v1/projects/{projectId}/archive": {
+      "post": {
+        "operationId": "archiveProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionedProjectCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archive a project",
+        "tags": ["projects"]
       }
     },
     "/api/v1/projects/{projectId}/issues": {
@@ -255,6 +390,84 @@
         "tags": ["issues"]
       }
     },
+    "/api/v1/issues/{issueId}/duplicate": {
+      "post": {
+        "operationId": "duplicateIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Duplicate a task and its checklist",
+        "tags": ["issues"]
+      }
+    },
+    "/api/v1/issues/{issueId}/restore": {
+      "post": {
+        "operationId": "restoreIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restore an archived task",
+        "tags": ["issues"]
+      }
+    },
     "/api/v1/projects/{projectId}/board": {
       "get": {
         "operationId": "getBoard",
@@ -264,6 +477,16 @@
             "required": true,
             "in": "path",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprintId",
+            "required": false,
+            "in": "query",
+            "description": "Return only tasks from this Active Sprint",
+            "schema": {
+              "format": "uuid",
               "type": "string"
             }
           }
@@ -458,7 +681,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VersionedColumnCommandDto"
+                "$ref": "#/components/schemas/ArchiveColumnDto"
               }
             }
           }
@@ -475,8 +698,554 @@
             }
           }
         },
-        "summary": "Archive a board column and its tasks",
+        "summary": "Archive a board column",
         "tags": ["boards"]
+      }
+    },
+    "/api/v1/projects/{projectId}/sprints": {
+      "get": {
+        "operationId": "listSprints",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List project Sprints",
+        "tags": ["sprints"]
+      },
+      "post": {
+        "operationId": "createSprint",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSprintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a planned Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/issues": {
+      "post": {
+        "operationId": "addIssueToSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SprintIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Assign a task to a Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/issues/bulk": {
+      "post": {
+        "operationId": "bulkAddIssuesToSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSprintIssuesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Assign multiple tasks to a Sprint atomically",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/issues/create": {
+      "post": {
+        "operationId": "createIssueInSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a task directly in a Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/issues/{issueId}": {
+      "delete": {
+        "operationId": "removeIssueFromSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a task from a Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/start": {
+      "post": {
+        "operationId": "startSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionedSprintCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start a planned Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/sprints/{sprintId}/complete": {
+      "post": {
+        "operationId": "completeSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteSprintDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Complete an active Sprint",
+        "tags": ["sprints"]
+      }
+    },
+    "/api/v1/workspace-data/export": {
+      "get": {
+        "operationId": "exportWorkspace",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Portable workspace JSON, schema version 1",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceExportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Export owner workspace data",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/import": {
+      "post": {
+        "operationId": "importWorkspace",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["mode", "file"],
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": ["replace", "merge"]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceImportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Import owner workspace data",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/import/preview": {
+      "post": {
+        "operationId": "previewWorkspaceImport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["mode", "file"],
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": ["replace", "merge"]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceImportPreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Validate and preview an owner workspace import without writing data",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/deletion-candidates": {
+      "get": {
+        "operationId": "listDeletionCandidates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionCandidatesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List owner-scoped permanent deletion candidates and impact counts",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/projects/{projectId}": {
+      "delete": {
+        "operationId": "permanentlyDeleteProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermanentDeleteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermanentlyDeletedProjectDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Permanently delete an archived Project",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/sprints/{sprintId}": {
+      "delete": {
+        "operationId": "permanentlyDeleteSprint",
+        "parameters": [
+          {
+            "name": "sprintId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermanentDeleteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermanentlyDeletedSprintDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Permanently delete a non-active Sprint",
+        "tags": ["workspace-data"]
+      }
+    },
+    "/api/v1/workspace-data/issues/{issueId}": {
+      "delete": {
+        "operationId": "permanentlyDeleteIssue",
+        "parameters": [
+          {
+            "name": "issueId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermanentDeleteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermanentlyDeletedIssueDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Permanently delete an archived Task",
+        "tags": ["workspace-data"]
       }
     },
     "/api/v1/projects/{projectId}/mcp-tokens": {
@@ -647,9 +1416,13 @@
           },
           "version": {
             "type": "number"
+          },
+          "doneRetentionDays": {
+            "type": "number",
+            "enum": [7, 14, 30]
           }
         },
-        "required": ["id", "name", "color", "mode", "version"]
+        "required": ["id", "name", "color", "mode", "version", "doneRetentionDays"]
       },
       "ProjectListResponseDto": {
         "type": "object",
@@ -667,6 +1440,80 @@
           }
         },
         "required": ["activeProjectId", "projects"]
+      },
+      "CreateProjectDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 32,
+            "default": "primary"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["kanban", "scrum"],
+            "default": "kanban"
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateProjectDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["kanban", "scrum"]
+          },
+          "doneRetentionDays": {
+            "type": "number",
+            "enum": [7, 14, 30]
+          }
+        },
+        "required": ["version"]
+      },
+      "VersionedProjectCommandDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "ChecklistItemInputDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "isCompleted": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": ["title"]
       },
       "CreateIssueDto": {
         "type": "object",
@@ -721,6 +1568,13 @@
             "maxLength": 500,
             "nullable": true
           },
+          "checklist": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemInputDto"
+            }
+          },
           "beforeIssueId": {
             "type": "string",
             "format": "uuid"
@@ -732,6 +1586,22 @@
         },
         "required": ["title", "columnId"]
       },
+      "ChecklistItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "isCompleted": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "title", "isCompleted"]
+      },
       "IssueResponseDto": {
         "type": "object",
         "properties": {
@@ -742,6 +1612,11 @@
           "projectId": {
             "type": "string",
             "format": "uuid"
+          },
+          "sprintId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           },
           "columnId": {
             "type": "string",
@@ -785,6 +1660,16 @@
             "type": "string",
             "nullable": true
           },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemResponseDto"
+            }
+          },
+          "checklistIncompleteCount": {
+            "type": "number",
+            "minimum": 0
+          },
           "completedAt": {
             "type": "string",
             "nullable": true,
@@ -805,6 +1690,7 @@
         "required": [
           "id",
           "projectId",
+          "sprintId",
           "columnId",
           "title",
           "description",
@@ -815,6 +1701,8 @@
           "dueDate",
           "isBlocked",
           "blockedReason",
+          "checklist",
+          "checklistIncompleteCount",
           "completedAt",
           "version",
           "createdAt",
@@ -870,6 +1758,13 @@
             "maxLength": 500,
             "nullable": true
           },
+          "checklist": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemInputDto"
+            }
+          },
           "version": {
             "type": "number",
             "minimum": 1
@@ -888,6 +1783,11 @@
             "type": "string",
             "format": "uuid"
           },
+          "sprintId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Visible Sprint scope used when ordering tasks on the Scrum Board"
+          },
           "beforeIssueId": {
             "type": "string",
             "format": "uuid"
@@ -895,6 +1795,11 @@
           "afterIssueId": {
             "type": "string",
             "format": "uuid"
+          },
+          "allowIncompleteChecklist": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explicitly allow moving a task with unfinished checklist items to Done"
           }
         },
         "required": ["version", "targetColumnId"]
@@ -905,6 +1810,42 @@
           "version": {
             "type": "number",
             "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "DuplicateIssueDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "targetColumnId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["version"]
+      },
+      "RestoreIssueDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "targetColumnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beforeIssueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "afterIssueId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": ["version"]
@@ -1050,9 +1991,926 @@
           "version": {
             "type": "number",
             "minimum": 1
+          },
+          "sprintId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Limit the command to one Active Sprint"
           }
         },
         "required": ["version"]
+      },
+      "ArchiveColumnDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "destinationColumnId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required when the archived column still contains active tasks"
+          },
+          "allowIncompleteChecklist": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explicitly allow moving tasks with unfinished checklist items to a Done destination"
+          }
+        },
+        "required": ["version"]
+      },
+      "SprintResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "active", "completed"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "plannedPoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "plannedIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedPoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "incompletePoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "incompleteIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "issueCount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Current number of tasks assigned to the sprint"
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "name",
+          "goal",
+          "status",
+          "startDate",
+          "endDate",
+          "plannedPoints",
+          "plannedIssueCount",
+          "completedPoints",
+          "completedIssueCount",
+          "incompletePoints",
+          "incompleteIssueCount",
+          "issueCount",
+          "completedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SprintListResponseDto": {
+        "type": "object",
+        "properties": {
+          "sprints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintResponseDto"
+            }
+          }
+        },
+        "required": ["sprints"]
+      },
+      "CreateSprintDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 500,
+            "default": ""
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-01"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-14"
+          }
+        },
+        "required": ["name", "startDate", "endDate"]
+      },
+      "SprintIssueDto": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["issueId"]
+      },
+      "BulkSprintIssuesDto": {
+        "type": "object",
+        "properties": {
+          "issueIds": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": ["issueIds"]
+      },
+      "VersionedSprintCommandDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "CompleteSprintDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "incompleteDestination": {
+            "description": "Use backlog or the UUID of another planned sprint in the same project",
+            "oneOf": [
+              {
+                "enum": ["backlog"]
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          }
+        },
+        "required": ["version", "incompleteDestination"]
+      },
+      "WorkspaceExportWorkspaceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "activeProjectId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["name", "activeProjectId", "version", "createdAt", "updatedAt"]
+      },
+      "WorkspaceExportColumnDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "done"]
+          },
+          "rank": {
+            "type": "string",
+            "description": "Integer rank encoded as a decimal string"
+          },
+          "wipLimit": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "rank",
+          "wipLimit",
+          "version",
+          "archivedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkspaceExportSprintDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "active", "completed"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "plannedPoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "plannedIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedPoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "incompletePoints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "incompleteIssueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "status",
+          "startDate",
+          "endDate",
+          "plannedPoints",
+          "plannedIssueCount",
+          "completedPoints",
+          "completedIssueCount",
+          "incompletePoints",
+          "incompleteIssueCount",
+          "completedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkspaceExportChecklistItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "rank": {
+            "type": "string",
+            "description": "Integer rank encoded as a decimal string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "title", "isCompleted", "rank", "createdAt", "updatedAt"]
+      },
+      "WorkspaceExportIssueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sprintId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "columnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["task", "story", "bug", "chore"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "medium", "low", "none"]
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "storyPoints": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "rank": {
+            "type": "string",
+            "description": "Integer rank encoded as a decimal string"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "isBlocked": {
+            "type": "boolean"
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceExportChecklistItemDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "sprintId",
+          "columnId",
+          "title",
+          "description",
+          "type",
+          "priority",
+          "labels",
+          "storyPoints",
+          "rank",
+          "version",
+          "dueDate",
+          "isBlocked",
+          "blockedReason",
+          "archivedAt",
+          "completedAt",
+          "checklist",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkspaceExportProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["kanban", "scrum"]
+          },
+          "doneRetentionDays": {
+            "type": "number",
+            "enum": [7, 14, 30]
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceExportColumnDto"
+            }
+          },
+          "sprints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceExportSprintDto"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceExportIssueDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "mode",
+          "doneRetentionDays",
+          "version",
+          "archivedAt",
+          "createdAt",
+          "updatedAt",
+          "columns",
+          "sprints",
+          "issues"
+        ]
+      },
+      "WorkspaceExportResponseDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "enum": [1]
+          },
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/WorkspaceExportWorkspaceDto"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceExportProjectDto"
+            }
+          }
+        },
+        "required": ["schemaVersion", "exportedAt", "workspace", "projects"]
+      },
+      "WorkspaceImportResultDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["replace", "merge"]
+          },
+          "schemaVersion": {
+            "type": "number",
+            "enum": [1]
+          },
+          "projectCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["mode", "schemaVersion", "projectCount"]
+      },
+      "WorkspaceImportEntityCountsDto": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "number",
+            "minimum": 0
+          },
+          "columns": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sprints": {
+            "type": "number",
+            "minimum": 0
+          },
+          "issues": {
+            "type": "number",
+            "minimum": 0
+          },
+          "checklistItems": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["projects", "columns", "sprints", "issues", "checklistItems"]
+      },
+      "WorkspaceImportImpactDto": {
+        "type": "object",
+        "properties": {
+          "newProjects": {
+            "type": "number",
+            "minimum": 0
+          },
+          "matchingProjects": {
+            "type": "number",
+            "minimum": 0
+          },
+          "projectsToArchive": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["newProjects", "matchingProjects", "projectsToArchive"]
+      },
+      "WorkspaceImportPreviewDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["replace", "merge"]
+          },
+          "schemaVersion": {
+            "type": "number",
+            "enum": [1]
+          },
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "workspaceName": {
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/WorkspaceImportEntityCountsDto"
+          },
+          "impact": {
+            "$ref": "#/components/schemas/WorkspaceImportImpactDto"
+          }
+        },
+        "required": ["mode", "schemaVersion", "exportedAt", "workspaceName", "counts", "impact"]
+      },
+      "ArchivedProjectCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "columnCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "issueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sprintCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "mcpTokenCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "mcpAuditEventCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "archivedAt",
+          "columnCount",
+          "issueCount",
+          "sprintCount",
+          "mcpTokenCount",
+          "mcpAuditEventCount"
+        ]
+      },
+      "SprintDeletionCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "completed"]
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "issueCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["id", "name", "status", "version", "projectName", "issueCount"]
+      },
+      "ArchivedIssueCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "checklistCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["id", "title", "version", "archivedAt", "projectName", "checklistCount"]
+      },
+      "DeletionCandidatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchivedProjectCandidateDto"
+            }
+          },
+          "sprints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintDeletionCandidateDto"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchivedIssueCandidateDto"
+            }
+          }
+        },
+        "required": ["projects", "sprints", "issues"]
+      },
+      "PermanentDeleteDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "PermanentlyDeletedProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "columnCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "issueCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sprintCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "mcpTokenCount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "mcpAuditEventCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "deleted",
+          "columnCount",
+          "issueCount",
+          "sprintCount",
+          "mcpTokenCount",
+          "mcpAuditEventCount"
+        ]
+      },
+      "PermanentlyDeletedSprintDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "movedIssueCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["id", "deleted", "movedIssueCount"]
+      },
+      "PermanentlyDeletedIssueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "checklistCount": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["id", "deleted", "checklistCount"]
       },
       "McpTokenResponseDto": {
         "type": "object",

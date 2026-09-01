@@ -5,9 +5,12 @@ import { useBoolean, usePopover } from 'minimal-shared/hooks';
 import { useId, useRef, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 
 import { Label } from 'src/components/label';
@@ -22,22 +25,38 @@ import { KanbanInputName } from '../components/kanban-input-name';
 type Props = BoxProps & {
   handleProps?: any;
   totalTasks?: number;
+  totalPoints?: number;
   columnName: string;
+  category?: 'todo' | 'in_progress' | 'done';
+  wipLimit?: number | null;
+  archiveOptions?: Array<{
+    id: string;
+    name: string;
+    category: 'todo' | 'in_progress' | 'done';
+  }>;
+  incompleteChecklistCount?: number;
   onClearColumn?: () => void;
-  onDeleteColumn?: () => void;
+  onArchiveColumn?: (destinationColumnId?: string, allowIncompleteChecklist?: boolean) => void;
   onToggleAddTask?: () => void;
   onUpdateColumn?: (inputName: string) => void;
+  onUpdateWip?: (wipLimit: number | null) => void;
 };
 
 export function KanbanColumnToolBar({
   sx,
   columnName,
   totalTasks,
+  totalPoints = 0,
+  category,
+  wipLimit,
+  archiveOptions = [],
+  incompleteChecklistCount = 0,
   handleProps,
   onClearColumn,
   onToggleAddTask,
-  onDeleteColumn,
+  onArchiveColumn,
   onUpdateColumn,
+  onUpdateWip,
 }: Props) {
   const inputId = useId();
 
@@ -47,6 +66,16 @@ export function KanbanColumnToolBar({
   const confirmDialog = useBoolean();
 
   const [name, setName] = useState(columnName);
+  const [wipValue, setWipValue] = useState(wipLimit ? String(wipLimit) : '');
+  const [destinationColumnId, setDestinationColumnId] = useState('');
+  const destinationColumn = archiveOptions.find(({ id }) => id === destinationColumnId);
+
+  useEffect(() => setWipValue(wipLimit ? String(wipLimit) : ''), [wipLimit]);
+  useEffect(() => {
+    if (!archiveOptions.some(({ id }) => id === destinationColumnId)) {
+      setDestinationColumnId(archiveOptions[0]?.id ?? '');
+    }
+  }, [archiveOptions, destinationColumnId]);
 
   useEffect(() => {
     if (menuActions.open) {
@@ -95,14 +124,40 @@ export function KanbanColumnToolBar({
         </MenuItem>
 
         <MenuItem
+          disabled={category === 'done'}
+          onClick={(event) => event.stopPropagation()}
+          sx={{ gap: 1, py: 1.5 }}
+        >
+          <TextField
+            size="small"
+            type="number"
+            label="WIP limit"
+            value={wipValue}
+            slotProps={{ htmlInput: { min: 1 } }}
+            onChange={(event) => setWipValue(event.target.value)}
+            sx={{ width: 120 }}
+          />
+          <Button
+            size="small"
+            disabled={Boolean(wipValue) && Number(wipValue) < 1}
+            onClick={() => {
+              onUpdateWip?.(wipValue ? Number(wipValue) : null);
+              menuActions.onClose();
+            }}
+          >
+            Save
+          </Button>
+        </MenuItem>
+
+        <MenuItem
           onClick={() => {
             confirmDialog.onTrue();
             menuActions.onClose();
           }}
           sx={{ color: 'error.main' }}
         >
-          <Iconify icon="solar:trash-bin-trash-bold" />
-          Delete
+          <Iconify icon="solar:archive-down-minimlistic-bold" />
+          Archive
         </MenuItem>
       </MenuList>
     </CustomPopover>
@@ -112,25 +167,50 @@ export function KanbanColumnToolBar({
     <ConfirmDialog
       open={confirmDialog.value}
       onClose={confirmDialog.onFalse}
-      title="Delete"
+      title="Archive column"
       content={
-        <>
-          Are you sure want to delete column?
-          <Box sx={{ typography: 'caption', color: 'error.main', mt: 2 }}>
-            <strong> NOTE: </strong> All tasks related to this category will also be deleted.
-          </Box>
-        </>
+        <Box sx={{ pt: 1 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Tasks are preserved and moved to the selected destination.
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            label="Task destination"
+            value={destinationColumnId}
+            helperText="A destination is required when this column contains tasks."
+            onChange={(event) => setDestinationColumnId(event.target.value)}
+          >
+            {archiveOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          {destinationColumn?.category === 'done' && incompleteChecklistCount > 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Moving these tasks to Done affects {incompleteChecklistCount} incomplete checklist
+              item(s) and requires confirmation.
+            </Alert>
+          )}
+        </Box>
       }
       action={
         <Button
           variant="contained"
           color="error"
+          disabled={Boolean(totalTasks) && !destinationColumnId}
           onClick={() => {
-            onDeleteColumn?.();
-            confirmDialog.onFalse();
+            const submitted = submitColumnArchive({
+              archiveOptions,
+              destinationColumnId,
+              incompleteChecklistCount,
+              onArchiveColumn,
+            });
+            if (submitted) confirmDialog.onFalse();
           }}
         >
-          Delete
+          Archive
         </Button>
       }
     />
@@ -138,7 +218,12 @@ export function KanbanColumnToolBar({
 
   return (
     <>
-      <Box sx={[{ display: 'flex', alignItems: 'center' }, ...(Array.isArray(sx) ? sx : [sx])]}>
+      <Box
+        sx={[
+          { display: 'flex', flexWrap: 'wrap', alignItems: 'center' },
+          ...(Array.isArray(sx) ? sx : [sx]),
+        ]}
+      >
         <Label
           sx={[
             (theme) => ({
@@ -160,19 +245,44 @@ export function KanbanColumnToolBar({
           sx={{ mx: 1 }}
         />
 
-        <IconButton size="small" color="inherit" onClick={onToggleAddTask}>
+        <Typography
+          variant="caption"
+          sx={{
+            mr: 1,
+            color: wipLimit && (totalTasks ?? 0) > wipLimit ? 'error.main' : 'text.secondary',
+          }}
+        >
+          {totalPoints} pts
+          {wipLimit ? ` · ${totalTasks ?? 0}/${wipLimit} WIP` : ''}
+          {wipLimit && (totalTasks ?? 0) > wipLimit ? ' · Over limit' : ''}
+        </Typography>
+
+        <IconButton
+          size="small"
+          color="inherit"
+          aria-label={`Add task to ${columnName}`}
+          onClick={onToggleAddTask}
+          sx={{ minWidth: { xs: 44, sm: 30 }, minHeight: { xs: 44, sm: 30 } }}
+        >
           <Iconify icon="solar:add-circle-bold" />
         </IconButton>
 
         <IconButton
           size="small"
+          aria-label={`Open ${columnName} column settings`}
           color={menuActions.open ? 'inherit' : 'default'}
           onClick={menuActions.onOpen}
+          sx={{ minWidth: { xs: 44, sm: 30 }, minHeight: { xs: 44, sm: 30 } }}
         >
           <Iconify icon="solar:menu-dots-bold-duotone" />
         </IconButton>
 
-        <IconButton size="small" {...handleProps}>
+        <IconButton
+          size="small"
+          aria-label={`Reorder ${columnName} column`}
+          sx={{ minWidth: { xs: 44, sm: 30 }, minHeight: { xs: 44, sm: 30 } }}
+          {...handleProps}
+        >
           <Iconify icon="custom:drag-dots-fill" />
         </IconButton>
       </Box>
@@ -181,4 +291,36 @@ export function KanbanColumnToolBar({
       {renderConfirmDialog()}
     </>
   );
+}
+
+export function submitColumnArchive({
+  archiveOptions,
+  destinationColumnId,
+  incompleteChecklistCount,
+  onArchiveColumn,
+  confirm = (message) => window.confirm(message),
+}: {
+  archiveOptions: Array<{
+    id: string;
+    name: string;
+    category: 'todo' | 'in_progress' | 'done';
+  }>;
+  destinationColumnId: string;
+  incompleteChecklistCount: number;
+  onArchiveColumn?: (destinationColumnId?: string, allowIncompleteChecklist?: boolean) => void;
+  confirm?: (message: string) => boolean;
+}) {
+  const destination = archiveOptions.find(({ id }) => id === destinationColumnId);
+  const requiresOverride = destination?.category === 'done' && incompleteChecklistCount > 0;
+  if (
+    requiresOverride &&
+    !confirm(
+      `Tasks in this column have ${incompleteChecklistCount} incomplete checklist item(s). Move them to Done anyway?`
+    )
+  ) {
+    return false;
+  }
+
+  onArchiveColumn?.(destinationColumnId || undefined, requiresOverride);
+  return true;
 }

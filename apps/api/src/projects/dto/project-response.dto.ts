@@ -15,6 +15,9 @@ export class ProjectSummaryDto {
 
   @ApiProperty()
   version!: number;
+
+  @ApiProperty({ enum: [7, 14, 30] })
+  doneRetentionDays!: number;
 }
 
 export class ProjectListResponseDto {

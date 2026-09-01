@@ -58,9 +58,19 @@ export const navData: NavSectionProps['data'] = [
         info: <Label>v{CONFIG.appVersion}</Label>,
       },
       {
+        title: 'Sprints',
+        path: paths.dashboard.sprints,
+        icon: ICONS.calendar,
+      },
+      {
         title: 'AI access',
         path: paths.dashboard.mcpAccess,
         icon: ICONS.lock,
+      },
+      {
+        title: 'Workspace data',
+        path: paths.dashboard.data,
+        icon: ICONS.file,
       },
       { title: 'Two', path: paths.dashboard.two, icon: ICONS.ecommerce },
       { title: 'Three', path: paths.dashboard.three, icon: ICONS.analytics },

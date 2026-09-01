@@ -2,14 +2,19 @@ import { Injectable } from '@nestjs/common';
 
 import { DomainValidationError } from '../common/domain/domain-errors';
 import { BoardsRepository } from './boards.repository';
-import type { MoveColumnDto, CreateColumnDto, UpdateColumnDto } from './dto/column-mutation.dto';
+import type {
+  MoveColumnDto,
+  CreateColumnDto,
+  UpdateColumnDto,
+  ArchiveColumnDto,
+} from './dto/column-mutation.dto';
 
 @Injectable()
 export class BoardsService {
   constructor(private readonly boards: BoardsRepository) {}
 
-  get(ownerId: string, projectId: string) {
-    return this.boards.get(ownerId, projectId);
+  get(ownerId: string, projectId: string, sprintId?: string) {
+    return this.boards.get(ownerId, projectId, sprintId);
   }
 
   getForProject(projectId: string) {
@@ -37,11 +42,11 @@ export class BoardsService {
     return this.boards.moveColumn(ownerId, columnId, input);
   }
 
-  clearColumn(ownerId: string, columnId: string, version: number) {
-    return this.boards.clearColumn(ownerId, columnId, version);
+  clearColumn(ownerId: string, columnId: string, version: number, sprintId?: string) {
+    return this.boards.clearColumn(ownerId, columnId, version, sprintId);
   }
 
-  archiveColumn(ownerId: string, columnId: string, version: number) {
-    return this.boards.archiveColumn(ownerId, columnId, version);
+  archiveColumn(ownerId: string, columnId: string, input: ArchiveColumnDto) {
+    return this.boards.archiveColumn(ownerId, columnId, input);
   }
 }

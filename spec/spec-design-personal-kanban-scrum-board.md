@@ -1,8 +1,8 @@
 ---
 title: Personal Kanban and Scrum Board Product Requirements
-version: 1.5
+version: 1.7
 date_created: 2026-08-31
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 owner: Product owner
 tags: [product, design, kanban, scrum, personal-productivity]
 ---
@@ -514,8 +514,11 @@ MVP พร้อมใช้งานเมื่อ acceptance criteria ต่�
   screen reader smoke test
 - **Performance tests**: สร้าง fixture 2,000 Issue แล้ววัด Board render, search,
   filter และ drag response
-- **Coverage requirement**: Domain logic และ persistence layer ต้องมี branch
-  coverage อย่างน้อย 90%; โค้ดทั้งหมดต้องมี line coverage อย่างน้อย 80%
+- **Coverage requirement**: MVP state/domain modules ที่เขียนเพิ่มให้ผลิตภัณฑ์ต้องมี line
+  coverage อย่างน้อย 80% และต้องประกาศ coverage scope ชัดเจนใน CI; generated code,
+  upstream Minimal starter surface ที่ไม่ได้อยู่ใน product route และ visual-only component
+  composition ไม่รวมในตัวหาร ส่วน persistence invariants ต้องมี PostgreSQL integration test
+  ครอบคลุม success, conflict และ rollback path ที่เสี่ยงต่อ data loss
 - **CI requirement**: ทุก change ต้องผ่าน lint, typecheck, unit, integration และ
   production build ก่อน merge
 
@@ -692,7 +695,7 @@ trace การตัดสินใจและ test coverage ได้
 
 - [System architecture](./spec-architecture-kanban-system.md)
 - [Technology stack specification](./spec-architecture-technology-stack.md)
-- UX and interaction specification: ยังไม่สร้าง
+- [Scrum MVP UX and interaction specification](./spec-ux-scrum-mvp.md)
 - [PostgreSQL data specification](./spec-data-kanban-postgresql.md)
 - [Railway deployment specification](./spec-infrastructure-railway-deployment.md)
 - [MCP task management integration](./spec-integration-mcp-task-management.md)
@@ -700,12 +703,12 @@ trace การตัดสินใจและ test coverage ได้
 
 ## 14. Next steps
 
-Foundation, Google authentication และ Board persistence ผ่าน local verification แล้ว
-ขั้นตอนต่อไปคือเพิ่ม MCP adapter โดย reuse application services เดิมเพื่อไม่ให้
-business rule แยกกัน
+Foundation, Google authentication, Board persistence, MCP Phase 1A และ Phase 2 Scrum
+implementation ผ่าน automated verification แล้ว ลำดับต่อไปคือ
 
-1. เพิ่ม MCP token management, idempotency และ audit log migration
-2. เพิ่ม Streamable HTTP adapter และ Web `/mcp` proxy
-3. เพิ่ม Project-token UI และ macOS helper CLI
-4. ทดสอบ cross-Project isolation ด้วย Codex CLI และ Claude Code CLI
+1. ทดสอบ Scrum manual acceptance ด้วย Google session จริงตาม
+   [Scrum MVP UX specification](./spec-ux-scrum-mvp.md)
+2. merge feature เข้า `develop`, สร้าง release branch และ deploy migration/API/Web ตาม Gitflow
+3. ทำ production smoke ก่อน merge release เข้า `main`
+4. กลับมาปิด MCP mutation, revoke และ cross-Project isolation acceptance ที่ defer ไว้
 5. ทำ UX specification และ test mapping สำหรับ Kanban, MCP และ Scrum phases

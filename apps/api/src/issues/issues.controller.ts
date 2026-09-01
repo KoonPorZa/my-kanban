@@ -9,6 +9,8 @@ import {
   MoveIssueDto,
   CreateIssueDto,
   UpdateIssueDto,
+  RestoreIssueDto,
+  DuplicateIssueDto,
   VersionedIssueCommandDto,
 } from './dto/issue-mutation.dto';
 
@@ -59,5 +61,34 @@ export class IssuesController {
     @Body() input: VersionedIssueCommandDto
   ) {
     return this.issues.archive(user.userId, issueId, input.version);
+  }
+
+  @Post('issues/:issueId/duplicate')
+  @ApiOperation({ operationId: 'duplicateIssue', summary: 'Duplicate a task and its checklist' })
+  @ApiCreatedResponse({ type: IssueResponseDto })
+  duplicate(
+    @CurrentUser() user: SessionPrincipal,
+    @Param('issueId') issueId: string,
+    @Body() input: DuplicateIssueDto
+  ) {
+    return this.issues.duplicate(user.userId, issueId, input.version, input.targetColumnId);
+  }
+
+  @Post('issues/:issueId/restore')
+  @ApiOperation({ operationId: 'restoreIssue', summary: 'Restore an archived task' })
+  @ApiOkResponse({ type: IssueResponseDto })
+  restore(
+    @CurrentUser() user: SessionPrincipal,
+    @Param('issueId') issueId: string,
+    @Body() input: RestoreIssueDto
+  ) {
+    return this.issues.restore(
+      user.userId,
+      issueId,
+      input.version,
+      input.targetColumnId,
+      input.beforeIssueId,
+      input.afterIssueId
+    );
   }
 }

@@ -1,8 +1,13 @@
 import type { BoardResponseDto, BoardColumnResponseDto } from './dto/board-response.dto';
-import type { MoveColumnDto, CreateColumnDto, UpdateColumnDto } from './dto/column-mutation.dto';
+import type {
+  MoveColumnDto,
+  CreateColumnDto,
+  UpdateColumnDto,
+  ArchiveColumnDto,
+} from './dto/column-mutation.dto';
 
 export abstract class BoardsRepository {
-  abstract get(ownerId: string, projectId: string): Promise<BoardResponseDto>;
+  abstract get(ownerId: string, projectId: string, sprintId?: string): Promise<BoardResponseDto>;
 
   abstract getForProject(projectId: string): Promise<BoardResponseDto>;
 
@@ -27,12 +32,13 @@ export abstract class BoardsRepository {
   abstract clearColumn(
     ownerId: string,
     columnId: string,
-    version: number
+    version: number,
+    sprintId?: string
   ): Promise<BoardColumnResponseDto>;
 
   abstract archiveColumn(
     ownerId: string,
     columnId: string,
-    version: number
+    input: ArchiveColumnDto
   ): Promise<BoardColumnResponseDto>;
 }

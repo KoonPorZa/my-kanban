@@ -2,6 +2,8 @@ import type { AxiosRequestConfig } from 'axios';
 
 import axios from 'axios';
 
+import { redirectExpiredSession } from 'src/auth/utils/session-expiry';
+
 // ----------------------------------------------------------------------
 
 // Browser requests stay same-origin so cookies work and Next.js can proxy API calls to NestJS.
@@ -9,7 +11,10 @@ const axiosInstance = axios.create({ withCredentials: true });
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject((error.response && error.response.data) || 'Something went wrong!')
+  (error) => {
+    redirectExpiredSession(error.response?.status, error.config?.url);
+    return Promise.reject((error.response && error.response.data) || 'Something went wrong!');
+  }
 );
 
 export default axiosInstance;

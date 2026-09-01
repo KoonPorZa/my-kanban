@@ -7,6 +7,7 @@
  */
 import type { UpdateIssueDtoType } from './updateIssueDtoType';
 import type { UpdateIssueDtoPriority } from './updateIssueDtoPriority';
+import type { ChecklistItemInputDto } from './checklistItemInputDto';
 
 export interface UpdateIssueDto {
   /** @maxLength 200 */
@@ -31,6 +32,8 @@ export interface UpdateIssueDto {
    * @nullable
    */
   blockedReason?: string | null;
+  /** @maxItems 100 */
+  checklist?: ChecklistItemInputDto[];
   /** @minimum 1 */
   version: number;
 }

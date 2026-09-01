@@ -34,6 +34,22 @@ export abstract class IssuesRepository {
 
   abstract archive(ownerId: string, issueId: string, version: number): Promise<IssueResponseDto>;
 
+  abstract duplicate(
+    ownerId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string
+  ): Promise<IssueResponseDto>;
+
+  abstract restore(
+    ownerId: string,
+    issueId: string,
+    version: number,
+    targetColumnId?: string,
+    beforeIssueId?: string,
+    afterIssueId?: string
+  ): Promise<IssueResponseDto>;
+
   abstract getForProject(
     projectId: string,
     issueId: string,

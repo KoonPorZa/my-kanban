@@ -7,6 +7,7 @@
  */
 import type { CreateIssueDtoType } from './createIssueDtoType';
 import type { CreateIssueDtoPriority } from './createIssueDtoPriority';
+import type { ChecklistItemInputDto } from './checklistItemInputDto';
 
 export interface CreateIssueDto {
   /** @maxLength 200 */
@@ -32,6 +33,8 @@ export interface CreateIssueDto {
    * @nullable
    */
   blockedReason?: string | null;
+  /** @maxItems 100 */
+  checklist?: ChecklistItemInputDto[];
   beforeIssueId?: string;
   afterIssueId?: string;
 }
