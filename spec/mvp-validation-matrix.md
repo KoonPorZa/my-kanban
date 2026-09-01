@@ -1,6 +1,6 @@
 ---
 title: MVP Validation Matrix
-version: 1.2
+version: 1.3
 date_created: 2026-09-01
 last_updated: 2026-09-01
 owner: Product owner
@@ -81,3 +81,9 @@ authenticated local routes และตรวจ automated evidence โดยไ
 
 Production release ยังต้องผ่าน Gitflow, Railway terminal `SUCCESS`, migration status และ
 unauthenticated/public smoke tests ก่อนปิด MVP
+
+Production gate ดังกล่าวผ่านเมื่อ September 1, 2026 ที่ application commit
+`975e3ced6717118c531bc9f67e83cb6027a59a5c`: GitHub Actions run `33475238112` เป็น
+`success`, Railway Web/API เป็น `SUCCESS`, Prisma apply migration ครบ 7 รายการ และ public
+root/liveness/auth/OAuth/MCP smoke ได้ผลตามที่คาด การปิด release นี้ไม่เปลี่ยนสถานะ manual
+checklist ใน Section 3 หรือ MCP authenticated acceptance ให้เป็น Passed

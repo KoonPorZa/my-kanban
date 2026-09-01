@@ -1,6 +1,6 @@
 ---
 title: Production Closeout Record
-version: 1.6
+version: 1.7
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -34,7 +34,7 @@ Automated checks รันกับ production เมื่อ August 31 แล�
 | Config drift       | API มี live `PORT`; IaC fix เป็น `3001`                        | Passed  |
 | Region placement   | Web, API และ Postgres อยู่ Singapore                           | Passed  |
 | Post-region deploy | Postgres, API และ Web deployment ใหม่                          | Success |
-| Prisma migration   | API pre-deploy พบ 3 migrations และไม่มีรายการค้าง              | Passed  |
+| Prisma migration   | API pre-deploy พบ 7 migrations และ apply สำเร็จทั้งหมด         | Passed  |
 | Public bypass      | Railway-generated Web domain ถูกลบและตอบ `404`                 | Passed  |
 | Cloudflare TLS     | Owner ยืนยัน mode `Full`; HTTPS ตอบ `200` โดยไม่ redirect loop | Passed  |
 | Board acceptance   | Owner ทดสอบ create, edit, drag, archive และ reload             | Passed  |
@@ -111,18 +111,27 @@ destructive impact และยอมรับ downtime การตรวจห
 Phase 3 เพิ่ม Project lifecycle, complete Task details/checklist, Scrum planning, filters/Focus,
 recovery, import/export และ safety gates ก่อน release `v0.2.0`
 
+Production application commit คือ `975e3ced6717118c531bc9f67e83cb6027a59a5c` โดย
+GitHub Actions run `33475238112` จบด้วย `success` Railway ใช้ deployment
+`11516de0-6879-4a35-bd57-7ec62ba8aefd` สำหรับ Web และ
+`5bd8a4cc-9f1c-4c18-addf-f0912a26be5f` สำหรับ API ซึ่งจบด้วย `SUCCESS` ทั้งคู่
+
 - [x] Automated tests, coverage, accessibility, performance และ production build ผ่าน
 - [x] Independent frontend และ backend review ให้ผล `APPROVE`
 - [x] Product Owner อนุมัติ production deployment เมื่อ September 1, 2026
 - [x] Product Owner ยอมรับ full manual checklist เป็น release waiver โดยไม่อ้างว่าทุกข้อผ่าน
-- [ ] Merge `release/0.2.0` เข้า `main`, tag และ push ตาม Gitflow
-- [ ] Railway API และ Web deployment ล่าสุดเป็น terminal `SUCCESS`
-- [ ] Prisma production migration ครบ 7 รายการและไม่มีรายการค้าง
-- [ ] Public HTTPS, liveness, auth boundary, OAuth redirect และ MCP boundary ผ่าน
-- [ ] Merge release กลับ `develop`
+- [x] Merge `release/0.2.0` เข้า `main`, tag และ push ตาม Gitflow
+- [x] Railway API และ Web application deployment เป็น terminal `SUCCESS`
+- [x] Prisma production migration ครบ 7 รายการและ apply สำเร็จทั้งหมด
+- [x] Public HTTPS, liveness, auth boundary, OAuth redirect และ MCP boundary ผ่าน
+- [x] Merge release กลับ `develop`
 
 ## 7. Stop condition
 
 ปิด MVP ได้เมื่อรายการ Phase 3 ใน Section 6 ผ่านครบ ยกเว้น full manual browser checklist และ
 MCP acceptance ที่มี explicit Product Owner waiver บันทึกไว้ ห้ามรายงาน MCP production-ready
 จนกว่า Section 2.2 จะผ่านครบ
+
+เงื่อนไขนี้ผ่านเมื่อ September 1, 2026 และปิด Personal Kanban/Scrum MVP ที่ `v0.2.0`
+โดย MCP production acceptance และ backup hardening ยังคงเป็น deferred scope ตาม Section 2.2
+และ Section 3
