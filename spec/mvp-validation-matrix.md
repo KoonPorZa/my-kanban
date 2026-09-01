@@ -1,6 +1,6 @@
 ---
 title: MVP Validation Matrix
-version: 1.1
+version: 1.3
 date_created: 2026-09-01
 last_updated: 2026-09-01
 owner: Product owner
@@ -72,5 +72,18 @@ unused Minimal starter surface ตาม PRD v1.7
 10. ตรวจ permanent delete confirmation จากนั้น Undo ก่อนครบ 5 วินาที และยืนยันว่า Project
     ที่มี MCP audit อายุไม่ครบ 90 วันถูกปฏิเสธการลบ
 
-เมื่อ checklist นี้ผ่านจึง merge feature เข้า `develop` และเปิด release branch ได้ Production
-deploy/merge `main` ต้องได้รับ Product Owner authorization แยกต่างหาก
+## 4. Production release authorization
+
+Product Owner อนุมัติ production deployment ของ `v0.2.0` เมื่อ September 1, 2026 หลังเปิด
+authenticated local routes และตรวจ automated evidence โดยไม่ได้บันทึกผลครบทุกข้อใน Section 3
+การตัดสินใจนี้ยกเลิก manual checklist ในฐานะ blocking gate สำหรับ release นี้เท่านั้น และไม่
+เปลี่ยนสถานะ unchecked item ให้เป็น Passed
+
+Production release ยังต้องผ่าน Gitflow, Railway terminal `SUCCESS`, migration status และ
+unauthenticated/public smoke tests ก่อนปิด MVP
+
+Production gate ดังกล่าวผ่านเมื่อ September 1, 2026 ที่ application commit
+`975e3ced6717118c531bc9f67e83cb6027a59a5c`: GitHub Actions run `33475238112` เป็น
+`success`, Railway Web/API เป็น `SUCCESS`, Prisma apply migration ครบ 7 รายการ และ public
+root/liveness/auth/OAuth/MCP smoke ได้ผลตามที่คาด การปิด release นี้ไม่เปลี่ยนสถานะ manual
+checklist ใน Section 3 หรือ MCP authenticated acceptance ให้เป็น Passed
