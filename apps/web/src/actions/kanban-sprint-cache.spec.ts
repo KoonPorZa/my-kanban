@@ -47,6 +47,7 @@ describe('Sprint Board cache updates', () => {
   afterEach(() => {
     getQueryClient().clear();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -344,7 +345,7 @@ describe('Sprint Board cache updates', () => {
         getQueryClient().getQueryData<BoardResponseDto>(scopedBoardKey)?.issues[0]?.columnId
       ).toBe(doneId);
     });
-    expect(moveIssueApi).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(moveIssueApi).toHaveBeenCalledTimes(1));
 
     resolveMove({ ...existing, columnId: doneId, version: 2 });
     await operation;
@@ -353,6 +354,39 @@ describe('Sprint Board cache updates', () => {
     expect(
       getQueryClient().getQueryData<BoardResponseDto>(scopedBoardKey)?.issues[0]
     ).toMatchObject({ columnId: doneId, version: 2 });
+  });
+
+  it('projects a move before asynchronous query cancellation settles', async () => {
+    vi.stubGlobal('window', {});
+    const queryClient = getQueryClient();
+    const existing = issue('instant-task', todoId, 'sprint-1');
+    queryClient.setQueryData(scopedBoardKey, {
+      project: { id: projectId, name: 'Scrum', mode: 'scrum', version: 1 },
+      columns: [],
+      issues: [existing],
+    });
+    queryClient.setQueryData(getListSprintsQueryKey(projectId), { sprints: [activeSprint()] });
+
+    let resolveCancellation!: () => void;
+    vi.spyOn(queryClient, 'cancelQueries').mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveCancellation = resolve;
+      })
+    );
+    moveIssueApi.mockResolvedValue({ ...existing, columnId: doneId, version: 2 });
+
+    const operation = persistTaskMove(projectId, task(existing.id, todoId), doneId, [
+      task(existing.id, doneId),
+    ]);
+
+    expect(queryClient.getQueryData<BoardResponseDto>(scopedBoardKey)?.issues[0]?.columnId).toBe(
+      doneId
+    );
+    expect(moveIssueApi).not.toHaveBeenCalled();
+
+    resolveCancellation();
+    await operation;
+    expect(moveIssueApi).toHaveBeenCalledTimes(1);
   });
 
   it('rolls the complete Board cache back when a move fails', async () => {

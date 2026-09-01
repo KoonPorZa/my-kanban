@@ -484,8 +484,8 @@ export async function persistTaskMove(
   const afterIssueId = orderedTasks[index - 1]?.id;
   const queryClient = getQueryClient();
   const queryKey = boardKey(projectId);
-  await queryClient.cancelQueries({ queryKey });
   const previous = queryClient.getQueryData<BoardResponseDto>(queryKey);
+  const cancellation = queryClient.cancelQueries({ queryKey });
   const orderedIssueIds = new Set(orderedTasks.map((item) => String(item.id)));
 
   updateBoardCache(projectId, (board) => {
@@ -509,6 +509,7 @@ export async function persistTaskMove(
   });
 
   try {
+    await cancellation;
     const updated = await moveIssue(String(task.id), {
       version: task.version,
       targetColumnId: String(targetColumnId),
