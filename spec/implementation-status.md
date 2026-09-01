@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.15
+version: 1.16
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -20,6 +20,10 @@ Automated gate และ independent review ผ่านครบ Product Owner 
 routes ด้วย Google session และอนุมัติ production release `v0.2.0` เมื่อ September 1, 2026
 โดยยอมรับว่า full manual checklist ยังไม่ได้บันทึกผลทีละข้อ การอนุมัตินี้เป็น explicit release
 waiver ไม่ใช่หลักฐานว่า manual acceptance ทุกข้อผ่าน
+
+Production application commit `975e3ced6717118c531bc9f67e83cb6027a59a5c` ผ่าน GitHub
+Actions และ deploy บน Railway สำเร็จทั้ง Web/API เมื่อ September 1, 2026 Prisma apply migration
+ครบ 7 รายการ และ public smoke ผ่านที่ `https://kanban.koonporza.com`
 
 ## 1. Completed foundation
 
@@ -113,6 +117,9 @@ Railway/Cloudflare resources ที่ใช้งานจริงแล้ว
 - Root typecheck ตรวจ Railway IaC ด้วย official `railway` package
 - Railway CLI version `5.45.10` link กับ Project `my-kanban` และ environment
   `production` แล้ว
+- Production Web deployment `11516de0-6879-4a35-bd57-7ec62ba8aefd` และ API deployment
+  `5bd8a4cc-9f1c-4c18-addf-f0912a26be5f` จบด้วย `SUCCESS`
+- GitHub Actions run `33475238112` ของ production application commit จบด้วย `success`
 - Manual local MCP UI test ถูก defer ตามคำสั่งผู้ใช้และไม่ block phase นี้
 
 ## 5. Completed vertical slices
@@ -191,7 +198,7 @@ Evidence ล่าสุดของ full local MVP gate มีดังนี�
 | `corepack pnpm railway:validate`    | Passed                               |
 | `corepack pnpm typecheck`           | Passed                               |
 | `corepack pnpm lint`                | Passed                               |
-| `corepack pnpm test`                | Passed; API 96, Web 75, CLI 4 tests  |
+| `corepack pnpm test`                | Passed; API 96, Web 76, CLI 4 tests  |
 | `corepack pnpm build`               | Passed for Web, API, client, and CLI |
 | `corepack pnpm api:generate`        | Passed twice; deterministic output   |
 | `corepack pnpm format:check`        | Passed                               |
@@ -218,10 +225,19 @@ Evidence ล่าสุดของ full local MVP gate มีดังนี�
 | Production MCP missing/invalid      | `401` through public Web proxy       |
 | Google OAuth production redirect    | Correct HTTPS callback               |
 | API/Postgres public exposure        | No domain and no TCP proxy           |
-| Production credential log scan      | No token/header pattern found        |
-| Railway deployment status           | Web, API, Postgres `SUCCESS`         |
-| Railway production region           | All services in Singapore            |
-| Post-region Prisma deploy           | 3 migrations, none pending           |
+
+## 9. Production release result
+
+Personal Kanban/Scrum MVP `v0.2.0` deploy สำเร็จบน Railway และใช้งานผ่าน
+`https://kanban.koonporza.com` โดย public root/liveness ตอบ `200`, protected REST/MCP ที่ไม่มี
+credential ตอบ `401` และ Google OAuth ตอบ `302` พร้อม production HTTPS callback
+
+Full manual checklist และ MCP authenticated production acceptance ไม่ถูกเปลี่ยนเป็น Passed;
+รายการดังกล่าวยังเป็น explicit Product Owner waiver/deferred scope ตาม production closeout
+| Production credential log scan | No token/header pattern found |
+| Railway deployment status | Web, API, Postgres `SUCCESS` |
+| Railway production region | All services in Singapore |
+| Post-region Prisma deploy | 3 migrations, none pending |
 
 Coverage gate ครอบคลุม 8 authored Phase 3 state/domain modules ที่ประกาศไว้ใน Vitest config
 และไม่รวม generated code หรือ Minimal starter surface ที่ไม่ได้อยู่ใน product route ได้ 80.01%
