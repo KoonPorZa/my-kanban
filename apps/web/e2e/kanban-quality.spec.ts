@@ -114,8 +114,11 @@ test('warm Board navigation becomes usable in under 2.5 seconds', async ({ page 
 test('explicit move updates the visible column in under 100ms while the response is delayed', async ({
   page,
 }) => {
-  const movedInBrowser = page.evaluate(
-    () =>
+  const moveNext = page.getByRole('button', { name: 'Move task to next column' }).last();
+  await moveNext.focus();
+
+  const movedInBrowser = moveNext.evaluate(
+    (button) =>
       new Promise<number>((resolve, reject) => {
         const findDoingColumn = () =>
           [...document.querySelectorAll<HTMLElement>('.minimal__kanban__column')].find((column) =>
@@ -137,10 +140,9 @@ test('explicit move updates the visible column in under 100ms while the response
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+        button.click();
       })
   );
-
-  await page.getByRole('button', { name: 'Move task to next column' }).last().press('Enter');
 
   expect(await movedInBrowser).toBeLessThan(100);
 });
