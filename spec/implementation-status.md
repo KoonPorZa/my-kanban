@@ -1,6 +1,6 @@
 ---
 title: Personal Kanban Implementation Status
-version: 1.14
+version: 1.15
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
@@ -16,9 +16,10 @@ implementation ใน local workspace แล้ว Phase 3 เพิ่ม Proje
 Backlog reorder/quick-add, filters/Focus, recovery, export/import, permanent-delete safety,
 accessibility และ reliability gates
 
-Automated gate ผ่านครบ ส่วน authenticated browser acceptance ด้วย Google session จริงและ
-production release ของ Phase 3 ยังไม่เกิดขึ้น จึงยังไม่เปิด release branch หรือ merge เข้า
-`main`
+Automated gate และ independent review ผ่านครบ Product Owner เปิดหน้า authenticated local
+routes ด้วย Google session และอนุมัติ production release `v0.2.0` เมื่อ September 1, 2026
+โดยยอมรับว่า full manual checklist ยังไม่ได้บันทึกผลทีละข้อ การอนุมัตินี้เป็น explicit release
+waiver ไม่ใช่หลักฐานว่า manual acceptance ทุกข้อผ่าน
 
 ## 1. Completed foundation
 
@@ -247,8 +248,8 @@ backup
 
 ## 10. Next steps
 
-1. Run authenticated local browser acceptance ตาม `mvp-validation-matrix.md`
-2. Commit `feature/mvp-hardening` และ merge เข้า `develop` ตาม Gitflow เมื่อ manual gate ผ่าน
-3. เปิด release branch, deploy migration/API/Web ไป Railway แล้วทำ production smoke ก่อน merge
-   เข้า `main`
-4. MCP manual acceptance ยังคง defer ตามคำสั่ง Product Owner และไม่ block browser MVP
+1. Merge `release/0.2.0` เข้า `main` และ tag `v0.2.0` ตาม Gitflow
+2. Observe Railway API และ Web deployments จนเป็น terminal `SUCCESS`
+3. Verify migration, HTTPS, health, authentication boundary, OAuth redirect และ MCP boundary
+4. Merge release กลับ `develop` และบันทึก production evidence
+5. MCP manual acceptance ยังคง defer ตามคำสั่ง Product Owner และไม่ block browser MVP

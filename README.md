@@ -7,11 +7,11 @@ TypeScript v7, local database migrations, health endpoints, and production
 builds. The current MVP also includes Project-scoped Remote MCP access for AI
 clients and a macOS helper CLI.
 
-> **Note:** The current production preview at `https://kanban.koonporza.com`
-> includes Google login, PostgreSQL-backed sessions, Board persistence, and the
-> Project-scoped MCP endpoint. Phase 3 MVP completion is verified locally on the
-> feature branch and is not deployed until authenticated acceptance and Gitflow
-> release approval pass.
+> **Note:** Production runs at `https://kanban.koonporza.com`. Phase 3 MVP
+> completion passed its automated release gates and independent reviews. On
+> September 1, 2026, the Product Owner explicitly authorized the `v0.2.0`
+> production release with the remaining full manual checklist recorded as an
+> accepted release waiver.
 
 ## Repository structure
 

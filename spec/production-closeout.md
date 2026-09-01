@@ -1,10 +1,10 @@
 ---
 title: Production Closeout Record
-version: 1.5
+version: 1.6
 date_created: 2026-08-31
 last_updated: 2026-09-01
 owner: Product owner
-tags: [production, railway, mcp, recovery, phase-2-gate]
+tags: [production, railway, mcp, recovery, phase-3-release]
 ---
 
 # Introduction
@@ -106,9 +106,23 @@ destructive impact และยอมรับ downtime การตรวจห
 - [x] ยืนยัน GitHub CI ของ `hotfix/0.1.4` เป็น success
 - [x] ยืนยัน Railway deployment ล่าสุดทั้งสาม service เป็น success
 
-## 6. Stop condition
+## 6. Phase 3 MVP release
 
-Board acceptance ใน Section 2.1 และ production gate ใน Section 3 ถึง 5 ผ่านครบแล้ว
-Phase 2 เริ่มได้โดยไม่มี unresolved production data risk ตาม Owner waiver ที่บันทึกไว้
-MCP acceptance ใน Section 2.2 ยังคงเป็น deferred follow-up และห้ามรายงานว่า MCP
-production-ready จนกว่าจะผ่านครบ
+Phase 3 เพิ่ม Project lifecycle, complete Task details/checklist, Scrum planning, filters/Focus,
+recovery, import/export และ safety gates ก่อน release `v0.2.0`
+
+- [x] Automated tests, coverage, accessibility, performance และ production build ผ่าน
+- [x] Independent frontend และ backend review ให้ผล `APPROVE`
+- [x] Product Owner อนุมัติ production deployment เมื่อ September 1, 2026
+- [x] Product Owner ยอมรับ full manual checklist เป็น release waiver โดยไม่อ้างว่าทุกข้อผ่าน
+- [ ] Merge `release/0.2.0` เข้า `main`, tag และ push ตาม Gitflow
+- [ ] Railway API และ Web deployment ล่าสุดเป็น terminal `SUCCESS`
+- [ ] Prisma production migration ครบ 7 รายการและไม่มีรายการค้าง
+- [ ] Public HTTPS, liveness, auth boundary, OAuth redirect และ MCP boundary ผ่าน
+- [ ] Merge release กลับ `develop`
+
+## 7. Stop condition
+
+ปิด MVP ได้เมื่อรายการ Phase 3 ใน Section 6 ผ่านครบ ยกเว้น full manual browser checklist และ
+MCP acceptance ที่มี explicit Product Owner waiver บันทึกไว้ ห้ามรายงาน MCP production-ready
+จนกว่า Section 2.2 จะผ่านครบ
